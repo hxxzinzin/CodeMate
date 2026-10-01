@@ -184,10 +184,10 @@ Supabase 무료 플랜은 활성 프로젝트가 2개뿐이고 CodeMate와 DataM
 
 ### 배경
 클라우드 프로젝트를 "새 테이블 자동 노출" 옵션을 끈 상태로 만들었다. 이 경우 migration으로 만든 테이블에 service_role 권한도 자동으로 붙지 않는다.
-로컬 Supabase는 기본 권한이 자동으로 붙기 때문에 로컬 테스트는 통과했지만, 클라우드에서 secret key로 조회하면 가 났다. 첫 실제 로그인 후 가입 트리거 결과를 확인하다가 발견했다.
+로컬 Supabase는 기본 권한이 자동으로 붙기 때문에 로컬 테스트는 통과했지만, 클라우드에서 secret key로 조회하면 `permission denied`가 났다. 첫 실제 로그인 후 가입 트리거 결과를 확인하다가 발견했다.
 
 ### 결정
-- anon, authenticated, service_role 모두 테이블 권한을 migration에 명시한다. ()
+- anon, authenticated, service_role 모두 테이블 권한을 migration에 명시한다. (`20261002090000_service_role_grants.sql`)
 - service_role은 앞으로 만드는 테이블에도 자동으로 접근하도록 default privileges를 설정한다. anon과 authenticated는 계속 테이블마다 직접 grant한다.
 
 ### 결과 / 트레이드오프
