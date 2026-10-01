@@ -1,0 +1,8 @@
+# 모든 텍스트 파일을 LF로 저장 (Windows/macOS/Linux 간 줄바꿈 차이 방지)
+* text=auto eol=lf
+
+# 바이너리
+*.ico binary
+*.png binary
+*.jpg binary
+*.woff2 binary
