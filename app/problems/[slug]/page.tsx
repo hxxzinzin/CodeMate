@@ -7,6 +7,7 @@ import { CodeWorkspace } from "@/components/editor/code-workspace";
 import { ProblemStatement } from "@/components/problems/problem-statement";
 import { getCurrentUser } from "@/lib/auth";
 import { getProblemBySlug } from "@/lib/db/problems";
+import { getViewedStaticLevel } from "@/lib/hints/service";
 
 export async function generateMetadata({ params }: PageProps<"/problems/[slug]">): Promise<Metadata> {
   const { slug } = await params;
@@ -18,6 +19,9 @@ export default async function ProblemPage({ params }: PageProps<"/problems/[slug
   const { slug } = await params;
   const [problem, user] = await Promise.all([getProblemBySlug(slug), getCurrentUser()]);
   if (!problem) notFound();
+
+  // 다시 방문했을 때 이전에 본 힌트 단계부터 이어서 볼 수 있게 한다. (조회 실패 시 0부터)
+  const viewedHintLevel = user ? await getViewedStaticLevel(user.id, problem.id).catch(() => 0) : 0;
 
   return (
     <>
@@ -35,7 +39,12 @@ export default async function ProblemPage({ params }: PageProps<"/problems/[slug
         <ProblemStatement problem={problem} />
 
         <section aria-label="코드 작성" className="lg:sticky lg:top-20 lg:self-start">
-          <CodeWorkspace slug={problem.slug} languages={problem.languages} isLoggedIn={Boolean(user)} />
+          <CodeWorkspace
+            slug={problem.slug}
+            languages={problem.languages}
+            isLoggedIn={Boolean(user)}
+            initialViewedHintLevel={viewedHintLevel}
+          />
         </section>
       </div>
     </>

@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { RotateCcwIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EditorLoading } from "@/components/editor/editor-loading";
+import { HintPanel } from "@/components/editor/hint-panel";
 import { SubmitPanel } from "@/components/editor/submit-panel";
 import { useSolvingTimer } from "@/components/editor/use-solving-timer";
 import {
@@ -35,6 +36,8 @@ type Props = {
   slug: string;
   languages: Language[];
   isLoggedIn: boolean;
+  /** 이전에 연 정적 힌트의 최고 단계 (로그인 사용자, 없으면 0) */
+  initialViewedHintLevel: number;
 };
 
 /**
@@ -43,7 +46,7 @@ type Props = {
  * 그래서 첫 state를 만들 때 바로 localStorage를 읽을 수 있고,
  * "템플릿이 먼저 저장되어 기존 코드를 덮어쓰는" 순서 문제가 생기지 않는다.
  */
-export default function EditorWorkspace({ slug, languages, isLoggedIn }: Props) {
+export default function EditorWorkspace({ slug, languages, isLoggedIn, initialViewedHintLevel }: Props) {
   const [store] = useState(browserStore);
   const [language, setLanguage] = useState<Language>(
     () => loadLastLanguage(store, slug, languages) ?? defaultLanguage(languages),
@@ -114,7 +117,9 @@ export default function EditorWorkspace({ slug, languages, isLoggedIn }: Props) 
   }
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-lg border">
+    // 데스크톱에서는 오른쪽 영역 전체가 화면 높이 안에 들어오게 한다. (sticky 영역이 화면보다 길면 아래쪽을 볼 수 없음)
+    // 힌트를 펼치면 에디터가 그만큼 줄어든다.
+    <div className="flex flex-col overflow-hidden rounded-lg border lg:h-[calc(100vh-6.5rem)]">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
         <div role="radiogroup" aria-label="언어 선택" className="flex gap-1">
           {languages.map((lang) => (
@@ -152,9 +157,13 @@ export default function EditorWorkspace({ slug, languages, isLoggedIn }: Props) 
         )}
       </div>
 
-      {/* 모바일은 고정 높이, 데스크톱은 화면 높이에 맞춘다. */}
-      <div className="h-[360px] lg:h-[calc(100vh-16rem)] lg:min-h-[420px]">
-        <CodeEditor language={language} value={codeByLanguage[language]} onChange={handleChange} />
+      {/* 모바일은 고정 높이, 데스크톱은 남는 높이를 모두 쓴다.
+          flex로 늘어난 영역은 높이가 "확정"되지 않아 Monaco의 height: 100%가 0이 되므로,
+          absolute inset-0 층을 두어 실제 크기를 채운다. */}
+      <div className="relative h-[360px] lg:h-auto lg:min-h-[220px] lg:flex-1">
+        <div className="absolute inset-0">
+          <CodeEditor language={language} value={codeByLanguage[language]} onChange={handleChange} />
+        </div>
       </div>
 
       <SubmitPanel
@@ -167,6 +176,15 @@ export default function EditorWorkspace({ slug, languages, isLoggedIn }: Props) 
           if (data.result === "self_correct" || data.result === "ac") solvingTimer.reset();
         }}
         isLoggedIn={isLoggedIn}
+      />
+
+      <HintPanel
+        slug={slug}
+        language={language}
+        getCode={() => codeByLanguage[language]}
+        isLoggedIn={isLoggedIn}
+        solvingMinutes={solvingTimer.minutes}
+        initialViewedLevel={initialViewedHintLevel}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t px-3 py-1.5 text-xs text-muted-foreground">
