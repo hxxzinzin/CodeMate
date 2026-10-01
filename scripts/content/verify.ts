@@ -17,7 +17,9 @@ import { loadProblems, PROBLEMS_DIR, SOLUTION_FILES, validate, type LoadedProble
 const C_IMAGE = "codemate-c-runner";
 // 여러 검증을 동시에 실행해도 충돌하지 않도록 프로세스마다 다른 컨테이너를 쓴다.
 const C_CONTAINER = `codemate-c-verify-${process.pid}`;
-const TIMEOUT_MS = 5000;
+// 정답 코드의 "속도"를 재는 것이 아니라 무한 루프만 걸러내는 안전장치다.
+// C는 docker exec 시작 시간까지 포함되어, 연속 실행 중 가끔 수 초 지연되는 경우가 있어 더 넉넉하게 둔다.
+const TIMEOUT_MS = { java: 5000, c: 10000 } as const;
 
 /** 줄 끝 공백과 마지막 빈 줄을 무시하고 비교한다. */
 function normalize(text: string): string {
@@ -26,8 +28,8 @@ function normalize(text: string): string {
 
 type RunResult = { ok: true } | { ok: false; reason: string };
 
-function run(command: string, args: string[], input: string): { stdout: string; error?: string } {
-  const r = spawnSync(command, args, { input, encoding: "utf8", timeout: TIMEOUT_MS, maxBuffer: 64 * 1024 * 1024 });
+function run(command: string, args: string[], input: string, timeout: number): { stdout: string; error?: string } {
+  const r = spawnSync(command, args, { input, encoding: "utf8", timeout, maxBuffer: 64 * 1024 * 1024 });
   if (r.error) return { stdout: "", error: r.error.message.includes("ETIMEDOUT") ? "시간 초과" : r.error.message };
   if (r.status !== 0) return { stdout: r.stdout, error: `종료 코드 ${r.status}: ${r.stderr.trim().slice(0, 300)}` };
   return { stdout: r.stdout };
@@ -49,7 +51,7 @@ function verifyJava({ dir, problem }: LoadedProblem, cases: ContentTestCase[]): 
   try {
     const compile = spawnSync("javac", ["-encoding", "UTF-8", "-d", out, path.join(dir, SOLUTION_FILES.java)], { encoding: "utf8" });
     if (compile.status !== 0) return [{ ok: false, reason: `컴파일 실패: ${compile.stderr.trim().slice(0, 500)}` }];
-    return check(cases, (input) => run("java", ["-Xss64m", "-cp", out, "Main"], input));
+    return check(cases, (input) => run("java", ["-Xss64m", "-cp", out, "Main"], input, TIMEOUT_MS.java));
   } finally {
     rmSync(out, { recursive: true, force: true });
   }
@@ -76,7 +78,7 @@ function verifyC({ problem }: LoadedProblem, cases: ContentTestCase[]): RunResul
   const compile = spawnSync("docker", ["exec", C_CONTAINER, "gcc", "-O2", "-std=c11", "-Wall", "-o", bin, `/work/${problem.slug}/${SOLUTION_FILES.c}`, "-lm"], { encoding: "utf8" });
   if (compile.status !== 0) return [{ ok: false, reason: `컴파일 실패: ${compile.stderr.trim().slice(0, 500)}` }];
   if (compile.stderr.trim()) console.log(`    ⚠ ${problem.slug} C 컴파일 경고:\n${compile.stderr.trim().slice(0, 500)}`);
-  return check(cases, (input) => run("docker", ["exec", "-i", C_CONTAINER, bin], input));
+  return check(cases, (input) => run("docker", ["exec", "-i", C_CONTAINER, bin], input, TIMEOUT_MS.c));
 }
 
 const problems = await loadProblems(process.argv.slice(2));
