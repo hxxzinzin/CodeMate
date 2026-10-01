@@ -35,7 +35,7 @@ export default async function ProblemPage({ params }: PageProps<"/problems/[slug
         <ProblemStatement problem={problem} />
 
         <section aria-label="코드 작성" className="lg:sticky lg:top-20 lg:self-start">
-          <CodeWorkspace slug={problem.slug} languages={problem.languages} />
+          <CodeWorkspace slug={problem.slug} languages={problem.languages} isLoggedIn={Boolean(user)} />
         </section>
       </div>
     </>
