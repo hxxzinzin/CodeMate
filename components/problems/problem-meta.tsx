@@ -6,6 +6,9 @@ type Props = Pick<ProblemSummary, "difficulty" | "estimatedMinutes" | "languages
 
 /** 난이도 · 언어 · 예상 시간 · 태그를 한 줄로 보여준다. */
 export function ProblemMeta({ difficulty, estimatedMinutes, languages, tags }: Props) {
+  // 자료구조 String과 C 개념 String처럼 종류는 달라도 표시 이름이 같으면 한 번만 보여준다.
+  const labels = [...new Set(tags.map((tag) => tagLabel(tag.key)))];
+
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-xs">
       <Badge>
@@ -21,9 +24,9 @@ export function ProblemMeta({ difficulty, estimatedMinutes, languages, tags }: P
         ·
       </span>
       <ul className="flex flex-wrap gap-1" aria-label="태그">
-        {tags.map((tag) => (
-          <li key={`${tag.type}:${tag.key}`}>
-            <Badge variant="secondary">{tagLabel(tag.key)}</Badge>
+        {labels.map((label) => (
+          <li key={label}>
+            <Badge variant="secondary">{label}</Badge>
           </li>
         ))}
       </ul>
