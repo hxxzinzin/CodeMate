@@ -1,3 +1,4 @@
+import { TAGS } from "@/content/tags";
 import type { Language } from "@/types/problem";
 import type { SkillCategory } from "@/types/skill";
 
@@ -21,32 +22,9 @@ export const SKILL_CATEGORY_LABELS: Record<SkillCategory, string> = {
   c: "C",
 };
 
-const TAG_LABELS: Record<string, string> = {
-  "brute-force": "Brute Force",
-  sorting: "Sorting",
-  "binary-search": "Binary Search",
-  "prefix-sum": "Prefix Sum",
-  "two-pointer": "Two Pointer",
-  "sliding-window": "Sliding Window",
-  greedy: "Greedy",
-  dfs: "DFS",
-  bfs: "BFS",
-  dp: "DP",
-  "frequency-count": "Frequency Count",
-  array: "Array",
-  string: "String",
-  stack: "Stack",
-  queue: "Queue",
-  hashmap: "HashMap",
-  hashset: "HashSet",
-  graph: "Graph",
-  "basic-syntax": "Basic Syntax",
-  oop: "OOP",
-  collection: "Collection",
-  generic: "Generic",
-  pointer: "Pointer",
-  struct: "Struct",
-};
+// 태그 표시 이름은 문제 콘텐츠와 같은 목록(content/tags.ts)을 쓴다.
+// 같은 키가 여러 종류에 있어도(예: string) 표시 이름은 같다.
+const TAG_LABELS: Record<string, string> = Object.assign({}, ...Object.values(TAGS));
 
 /** 등록되지 않은 태그는 키를 그대로 보여준다. */
 export function tagLabel(key: string): string {

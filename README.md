@@ -73,6 +73,28 @@ npx supabase db push
 
 > Windows PowerShell에서 `npx`가 실행 정책 때문에 막히면 `npx.cmd`로 실행하세요.
 
+## 문제 콘텐츠
+
+문제는 `content/problems/<slug>/`에 폴더 단위로 관리합니다.
+
+```
+content/problems/valid-brackets/
+├── problem.ts   # 설명, 예제, 힌트 4단계, 해설, 태그, 숨김 테스트 (content/types.ts 타입)
+├── Main.java    # Java 정답 코드
+└── main.c       # C 정답 코드
+```
+
+```bash
+npm run content:verify        # 형식 검사 + 정답 코드를 예제·숨김 테스트로 실행 (Java: 로컬 JDK, C: Docker)
+npm run content:seed          # supabase/seed.sql 생성 (직접 수정하지 않음)
+npm run db:reset              # 로컬 DB에 migration + seed 적용
+npx supabase db push --include-seed   # 클라우드에 seed 적용
+```
+
+- 태그는 `content/tags.ts`에 등록된 것만 쓸 수 있습니다. (화면 표시 이름도 이 파일을 사용)
+- 문제 id는 slug에서 결정적으로 만들어지므로 seed를 여러 번 적용해도 중복되지 않습니다.
+- 정답 검증 스크립트는 저장소의 정답 코드만 실행합니다. 사용자 코드는 실행하지 않습니다.
+
 ## 로그인 (Google OAuth) 설정
 
 1. **Google Cloud Console** → API 및 서비스

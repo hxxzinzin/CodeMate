@@ -2,6 +2,7 @@
   "name": "codemate",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -12,7 +13,9 @@
     "db:reset": "npx supabase db reset",
     "db:test": "npx supabase test db",
     "db:lint": "npx supabase db lint --level warning",
-    "db:types": "npx supabase gen types typescript --local --schema public > types/database.ts && npx oxfmt types/database.ts"
+    "db:types": "npx supabase gen types typescript --local --schema public > types/database.ts && npx oxfmt types/database.ts",
+    "content:verify": "node scripts/content/verify.ts",
+    "content:seed": "node scripts/content/build-seed.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

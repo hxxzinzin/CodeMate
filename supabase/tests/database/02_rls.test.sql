@@ -9,6 +9,7 @@ select plan(17);
 
 -- ---------------------------------------------------------------------------
 -- 준비 (postgres 권한으로 데이터 생성)
+-- seed 문제도 함께 있으므로, 문제 관련 검증은 아래에서 만든 테스트용 id로 범위를 좁힌다.
 -- ---------------------------------------------------------------------------
 insert into auth.users (id, email) values
   ('aaaaaaaa-0000-0000-0000-000000000000', 'a@example.com'),
@@ -37,13 +38,13 @@ insert into public.submissions (user_id, problem_id, language, code) values
 set local role anon;
 
 select results_eq(
-  'select slug from public.problems',
+  $$ select slug from public.problems where id in ('10000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002') $$,
   $$ values ('published') $$,
   'anon: 공개된 문제만 보인다'
 );
 
 select results_eq(
-  'select tag from public.problem_tags',
+  $$ select tag from public.problem_tags where problem_id in ('10000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002') $$,
   $$ values ('sorting') $$,
   'anon: 공개된 문제의 태그만 보인다'
 );
@@ -145,7 +146,7 @@ select results_eq(
 set local role service_role;
 
 select results_eq(
-  'select content from public.problem_hints',
+  $$ select content from public.problem_hints where problem_id in ('10000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002') $$,
   $$ values ('정렬을 떠올려 보세요') $$,
   'service_role: 서버는 힌트를 읽을 수 있다'
 );
