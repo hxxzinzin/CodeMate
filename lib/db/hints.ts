@@ -19,6 +19,26 @@ export async function getStaticHint(problemId: string, level: HintLevel): Promis
   return data?.content ?? null;
 }
 
+/** 정답 해설과 정답 코드. problem_hints와 마찬가지로 서버(service_role)만 읽을 수 있다. */
+export async function getSolution(
+  problemId: string,
+): Promise<{ explanation: string; referenceCode: Record<string, string> } | null> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("problem_solutions")
+    .select("explanation, reference_code")
+    .eq("problem_id", problemId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const code = data.reference_code;
+  const referenceCode =
+    code && typeof code === "object" && !Array.isArray(code)
+      ? Object.fromEntries(Object.entries(code).filter((e): e is [string, string] => typeof e[1] === "string"))
+      : {};
+  return { explanation: data.explanation, referenceCode };
+}
+
 export type HintSource = "static" | "ai";
 export type HintEvent = { level: number; source: HintSource; createdAt: string };
 

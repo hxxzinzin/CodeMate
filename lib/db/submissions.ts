@@ -41,6 +41,9 @@ export type NewSubmission = {
   /** 이번 시도(직전 제출 이후)에 본 힌트 수와 최고 단계 */
   hintCount: number;
   maxHintLevel: number;
+  /** 이번 시도에 AI 리뷰를 받았는지, 정답을 봤는지 */
+  aiReviewUsed: boolean;
+  solutionRevealed: boolean;
   judgeDetail: Json | null;
 };
 
@@ -58,6 +61,8 @@ export async function insertSubmission(s: NewSubmission): Promise<{ id: string; 
       solving_time_sec: s.solvingTimeSec,
       hint_count: s.hintCount,
       max_hint_level: s.maxHintLevel,
+      ai_review_used: s.aiReviewUsed,
+      solution_revealed: s.solutionRevealed,
       judge_detail: s.judgeDetail,
     })
     .select("id, created_at")
@@ -67,6 +72,28 @@ export async function insertSubmission(s: NewSubmission): Promise<{ id: string; 
 }
 
 export type LearningEvent = "problem_view" | "hint_request" | "submission" | "solve" | "review_request" | "solution_reveal";
+
+/** 직전 제출 이후 이 문제에서 AI 리뷰를 받았는지, 정답을 봤는지 (제출 기록용) */
+export async function getCoachUsageSince(
+  userId: string,
+  problemId: string,
+  since: string | null,
+): Promise<{ aiReviewUsed: boolean; solutionRevealed: boolean }> {
+  const supabase = await createClient();
+  let query = supabase
+    .from("learning_history")
+    .select("event_type, metadata")
+    .eq("user_id", userId)
+    .eq("problem_id", problemId)
+    .in("event_type", ["review_request", "solution_reveal"]);
+  if (since) query = query.gt("created_at", since);
+  const { data, error } = await query;
+  if (error) throw error;
+  return {
+    aiReviewUsed: data.some((e) => e.event_type === "review_request" && (e.metadata as { kind?: string }).kind === "review"),
+    solutionRevealed: data.some((e) => e.event_type === "solution_reveal"),
+  };
+}
 
 /** 학습 이력 기록. 부가 기록이라 실패해도 본 작업을 막지 않고 로그만 남긴다. */
 export async function recordLearningEvent(

@@ -19,6 +19,9 @@ type Props = {
   solvingMinutes: number;
   /** 이전에 연 정적 힌트의 최고 단계 (로그인 사용자) */
   initialViewedLevel: number;
+  /** 열림 상태는 작업 영역이 관리한다. (힌트·AI 코치 패널 중 하나만 열리도록) */
+  open: boolean;
+  onToggle: () => void;
 };
 
 type HintData = { level: HintLevel; content: string };
@@ -29,8 +32,16 @@ const THINK_FIRST_MINUTES = 10;
  * 1) 미리 작성된 힌트를 1단계부터 순서대로 연다. (AI 호출 없음)
  * 2) 그래도 막히면 지금 코드에 맞춘 AI 힌트를 받는다.
  */
-export function HintPanel({ slug, language, getCode, isLoggedIn, solvingMinutes, initialViewedLevel }: Props) {
-  const [open, setOpen] = useState(false);
+export function HintPanel({
+  slug,
+  language,
+  getCode,
+  isLoggedIn,
+  solvingMinutes,
+  initialViewedLevel,
+  open,
+  onToggle,
+}: Props) {
   const [hints, setHints] = useState<HintData[]>([]);
   const [aiHint, setAiHint] = useState<HintData | null>(null);
   const [pending, setPending] = useState<"static" | "ai" | null>(null);
@@ -91,7 +102,7 @@ export function HintPanel({ slug, language, getCode, isLoggedIn, solvingMinutes,
         type="button"
         aria-expanded={open}
         aria-controls="hint-panel"
-        onClick={() => setOpen((v) => !v)}
+        onClick={onToggle}
         className="flex w-full items-center justify-between px-3 py-2 text-sm text-muted-foreground hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
       >
         <span className="flex items-center gap-1.5">
