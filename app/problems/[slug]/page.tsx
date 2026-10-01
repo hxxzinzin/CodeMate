@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeftIcon } from "lucide-react";
 import { DemoNotice } from "@/components/auth/demo-notice";
+import { CodeWorkspace } from "@/components/editor/code-workspace";
 import { ProblemStatement } from "@/components/problems/problem-statement";
 import { getCurrentUser } from "@/lib/auth";
 import { getProblemBySlug } from "@/lib/db/problems";
@@ -34,10 +35,7 @@ export default async function ProblemPage({ params }: PageProps<"/problems/[slug
         <ProblemStatement problem={problem} />
 
         <section aria-label="코드 작성" className="lg:sticky lg:top-20 lg:self-start">
-          <div className="flex min-h-64 flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-6 text-center">
-            <p className="text-sm font-medium">코드 에디터 준비 중</p>
-            <p className="text-xs text-muted-foreground">Java·C 에디터와 자동 저장 기능이 곧 추가돼요.</p>
-          </div>
+          <CodeWorkspace languages={problem.languages} />
         </section>
       </div>
     </>
