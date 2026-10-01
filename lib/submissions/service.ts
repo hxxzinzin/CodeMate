@@ -1,7 +1,9 @@
 import "server-only";
 import type { ApiErrorCode } from "@/lib/api/response";
 import { getProgress, getStreakAndTimezone, saveProgress, saveStreak } from "@/lib/db/learning";
+import { getHintEvents } from "@/lib/db/hints";
 import { getProblemBySlug } from "@/lib/db/problems";
+import { summarizeHintUsage } from "@/lib/hints/rules";
 import { getSubmissionStats, insertSubmission, recordLearningEvent } from "@/lib/db/submissions";
 import { getJudge } from "@/lib/judge/provider";
 import { clampSolvingTime, isNewlySolved, nextProgress } from "@/lib/learning/progress";
@@ -48,6 +50,10 @@ export async function submitSolution(userId: string, req: SubmissionRequest, now
   });
 
   const attemptCount = stats.count + 1;
+  // 직전 제출 이후 본 힌트만 이번 시도에 포함한다. (난이도 조정에 사용)
+  const hintUsage = summarizeHintUsage(
+    (await getHintEvents(userId, problem.id, stats.lastSubmittedAt)).map((e) => e.level),
+  );
   const saved = await insertSubmission({
     userId,
     problemId: problem.id,
@@ -56,6 +62,8 @@ export async function submitSolution(userId: string, req: SubmissionRequest, now
     result,
     attemptCount,
     solvingTimeSec: clampSolvingTime(req.solvingTimeSec, problem.estimatedMinutes),
+    hintCount: hintUsage.hintCount,
+    maxHintLevel: hintUsage.maxHintLevel,
     judgeDetail: detail ? { judge: judge.name, ...detail } : { judge: judge.name },
   });
 
