@@ -13,6 +13,7 @@ CodeMate의 중요한 기술적 의사결정과 그 이유를 기록합니다.
 | [006](#adr-006-프로젝트별-저장소와-api-키-분리) | 프로젝트별 저장소와 API 키 분리 | Accepted |
 | [007](#adr-007-ai-활용-사실의-공개-방식) | AI 활용 사실의 공개 방식 | Accepted |
 | [008](#adr-008-로컬-supabase와-pgtap으로-db-변경-검증) | 로컬 Supabase와 pgTAP으로 DB 변경 검증 | Accepted |
+| [009](#adr-009-모든-역할의-테이블-권한을-migration에-명시) | 모든 역할의 테이블 권한을 migration에 명시 | Accepted |
 
 ## 템플릿
 
@@ -175,3 +176,20 @@ Supabase 무료 플랜은 활성 프로젝트가 2개뿐이고 CodeMate와 DataM
 - 로컬 개발에 Docker Desktop이 필요하고, 실행 중 메모리를 2~4GB 사용한다.
 - 쓰지 않는 서비스(Storage, Realtime, Edge Functions 등)는 제외하고 실행한다.
 - RLS 같은 보안 규칙을 테스트 코드로 남겨, 이후 변경에서도 같은 검증을 반복할 수 있다.
+
+## ADR-009: 모든 역할의 테이블 권한을 migration에 명시
+
+- 날짜: 2026-10-02
+- 상태: Accepted
+
+### 배경
+클라우드 프로젝트를 "새 테이블 자동 노출" 옵션을 끈 상태로 만들었다. 이 경우 migration으로 만든 테이블에 service_role 권한도 자동으로 붙지 않는다.
+로컬 Supabase는 기본 권한이 자동으로 붙기 때문에 로컬 테스트는 통과했지만, 클라우드에서 secret key로 조회하면 가 났다. 첫 실제 로그인 후 가입 트리거 결과를 확인하다가 발견했다.
+
+### 결정
+- anon, authenticated, service_role 모두 테이블 권한을 migration에 명시한다. ()
+- service_role은 앞으로 만드는 테이블에도 자동으로 접근하도록 default privileges를 설정한다. anon과 authenticated는 계속 테이블마다 직접 grant한다.
+
+### 결과 / 트레이드오프
+- 로컬과 클라우드의 기본 권한 설정이 달라도 같은 결과가 나온다.
+- 로컬 테스트만으로는 이런 환경 차이를 잡을 수 없다. migration을 클라우드에 적용한 뒤에는 공개 키와 secret key로 접근 결과를 한 번씩 확인한다.
