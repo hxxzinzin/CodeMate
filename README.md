@@ -123,7 +123,8 @@ npx supabase db push --include-seed   # 클라우드에 seed 적용
    | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase Publishable key | 브라우저 |
    | `SUPABASE_SECRET_KEY` | Supabase Secret key | 서버 전용 |
    | `GEMINI_API_KEY` | Google AI Studio API key | 서버 전용 |
-   | `GEMINI_MODEL` | 예: `gemini-3.8-flash` | 서버 전용 |
+   | `GEMINI_MODEL` | `gemini-3.5-flash-lite` (비우면 기본값) | 서버 전용 |
+   | `GEMINI_FALLBACK_MODEL` | `gemini-3.1-flash-lite` (비우면 기본값) | 서버 전용 |
 
 4. Deploy 후 Supabase **URL Configuration**에 배포 주소를 추가합니다. (위 로그인 설정 3번)
 5. 확인
@@ -143,7 +144,13 @@ Preview도 같은 Supabase 프로젝트(운영 DB)를 사용합니다.
 | Supabase Free | 활성 프로젝트 2개, DB 용량 제한. 일정 기간 활동이 없으면 프로젝트가 일시정지됨 (대시보드에서 Restore) | https://supabase.com/pricing |
 | Gemini API Free tier | 모델별 분당·일일 요청 한도. 무료 등급 데이터는 서비스 개선에 사용될 수 있음 | https://ai.google.dev/gemini-api/docs/rate-limits |
 
-> Gemini API 연동 방법은 Phase 6에서 추가합니다.
+## AI 코치 (Gemini)
+
+1. [Google AI Studio](https://aistudio.google.com/apikey)에서 API 키를 발급받아 `GEMINI_API_KEY`에 넣습니다. (서버 전용, `NEXT_PUBLIC_` 금지)
+2. `npm run ai:smoke`로 연결을 확인합니다. 짧은 힌트를 한 번 요청하고, 응답 모델·시간·토큰 수를 출력합니다. (키는 출력하지 않음)
+
+- 호출은 서버(`lib/ai/gemini.ts`)에서만 합니다. 기본 모델이 한도 초과·과부하면 예비 모델로 한 번 더 시도합니다.
+- 모델 선택 근거와 비교 결과는 [ADR-010](docs/decisions.md#adr-010-gemini-모델-선택과-예비-모델)에 있습니다.
 
 ## 문서
 
