@@ -1,8 +1,8 @@
 import "server-only";
 import type { ApiErrorCode } from "@/lib/api/response";
 import { buildExplainPrompt, buildReviewPrompt } from "@/lib/ai/coach-prompts";
-import { generateText } from "@/lib/ai/gemini";
 import { COACH_SYSTEM_PROMPT } from "@/lib/ai/prompts";
+import { callAi } from "@/lib/ai/usage";
 import type { ExplainRequest, ReviewRequest, SolutionRequest } from "@/lib/coach/schema";
 import { getSolution } from "@/lib/db/hints";
 import { getProblemBySlug } from "@/lib/db/problems";
@@ -33,19 +33,22 @@ export async function reviewCode(userId: string, req: ReviewRequest): Promise<Te
   const problem = await findProblem(req.slug, req.language);
   if (isFailure(problem)) return problem;
 
-  const result = await generateText({
+  const result = await callAi({
+    kind: "review",
+    caller: { userId },
+    problemId: problem.id,
     system: COACH_SYSTEM_PROMPT,
     prompt: buildReviewPrompt({ problem, language: req.language, code: req.code }),
     maxOutputTokens: 900,
     temperature: 0.3,
+    meta: { slug: problem.slug, language: req.language },
   });
   const { text, removed } = stripLongCodeBlocks(result.text);
   await recordLearningEvent(userId, problem.id, "review_request", {
     kind: "review",
     language: req.language,
     model: result.model,
-    tokensIn: result.tokensIn,
-    tokensOut: result.tokensOut,
+    cached: result.cached,
     removedCodeBlocks: removed,
   });
   return { ok: true, content: text };
@@ -56,17 +59,20 @@ export async function explainConcept(userId: string, req: ExplainRequest): Promi
   const problem = await findProblem(req.slug, req.language);
   if (isFailure(problem)) return problem;
 
-  const result = await generateText({
+  const result = await callAi({
+    kind: "explain",
+    caller: { userId },
+    problemId: problem.id,
     system: COACH_SYSTEM_PROMPT,
     prompt: buildExplainPrompt({ problem, question: req.question, language: req.language, code: req.code }),
     maxOutputTokens: 600,
+    meta: { slug: problem.slug },
   });
   const { text, removed } = stripLongCodeBlocks(result.text);
   await recordLearningEvent(userId, problem.id, "review_request", {
     kind: "explain",
     model: result.model,
-    tokensIn: result.tokensIn,
-    tokensOut: result.tokensOut,
+    cached: result.cached,
     removedCodeBlocks: removed,
   });
   return { ok: true, content: text };

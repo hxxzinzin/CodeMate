@@ -8,6 +8,7 @@ import { EditorLoading } from "@/components/editor/editor-loading";
 import { CoachPanel } from "@/components/editor/coach-panel";
 import { HintPanel } from "@/components/editor/hint-panel";
 import { SubmitPanel } from "@/components/editor/submit-panel";
+import { useAiUsage, usageLabel } from "@/components/editor/use-ai-usage";
 import { useSolvingTimer } from "@/components/editor/use-solving-timer";
 import {
   browserStore,
@@ -61,7 +62,13 @@ export default function EditorWorkspace({ slug, languages, isLoggedIn, initialVi
   const solvingTimer = useSolvingTimer(store, slug);
   // 힌트·AI 코치 패널은 하나만 열어 에디터 공간을 지킨다.
   const [openPanel, setOpenPanel] = useState<"hint" | "coach" | null>(null);
-  const togglePanel = (panel: "hint" | "coach") => setOpenPanel((current) => (current === panel ? null : panel));
+  const aiUsage = useAiUsage();
+  const togglePanel = (panel: "hint" | "coach") => {
+    const next = openPanel === panel ? null : panel;
+    setOpenPanel(next);
+    // 패널을 열 때 오늘 남은 AI 사용량을 불러온다. (닫혀 있으면 요청하지 않음)
+    if (next) void aiUsage.refresh();
+  };
 
   // 아직 저장되지 않은 마지막 변경. 탭을 닫거나 숨길 때 바로 저장하기 위해 보관한다.
   const pending = useRef<{ language: Language; code: string } | null>(null);
@@ -191,6 +198,8 @@ export default function EditorWorkspace({ slug, languages, isLoggedIn, initialVi
         initialViewedLevel={initialViewedHintLevel}
         open={openPanel === "hint"}
         onToggle={() => togglePanel("hint")}
+        usageText={usageLabel(aiUsage.usage)}
+        onAiUsed={aiUsage.refresh}
       />
 
       <CoachPanel
@@ -200,6 +209,8 @@ export default function EditorWorkspace({ slug, languages, isLoggedIn, initialVi
         isLoggedIn={isLoggedIn}
         open={openPanel === "coach"}
         onToggle={() => togglePanel("coach")}
+        usageText={usageLabel(aiUsage.usage)}
+        onAiUsed={aiUsage.refresh}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t px-3 py-1.5 text-xs text-muted-foreground">
