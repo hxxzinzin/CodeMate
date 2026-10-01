@@ -1,9 +1,63 @@
 import "server-only";
+import { cache } from "react";
 import { escapeLikePattern, type ProblemFilters } from "@/lib/problems/filters";
 import { createClient } from "@/lib/supabase/server";
-import type { Language, ProblemListItem, ProblemStatus, ProblemTag } from "@/types/problem";
+import type { Json } from "@/types/database";
+import type { Language, Problem, ProblemExample, ProblemListItem, ProblemStatus, ProblemTag } from "@/types/problem";
 
 type TagRow = { tag_type: string; tag: string };
+
+const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+function toLanguages(values: string[]): Language[] {
+  return values.filter((l): l is Language => l === "java" || l === "c");
+}
+
+/** jsonb로 저장된 예제를 화면에서 쓸 수 있는 형태만 골라낸다. (형식이 어긋난 항목은 제외) */
+function toExamples(value: Json): ProblemExample[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (typeof item !== "object" || item === null || Array.isArray(item)) return [];
+    const { input, output, explanation } = item;
+    if (typeof input !== "string" || typeof output !== "string") return [];
+    return [{ input, output, explanation: typeof explanation === "string" ? explanation : undefined }];
+  });
+}
+
+/**
+ * slug로 공개 문제 하나를 조회한다. 없으면 null.
+ * React cache로 감싸 같은 요청 안에서 metadata와 페이지가 DB를 한 번만 조회하게 한다.
+ */
+export const getProblemBySlug = cache(async (slug: string): Promise<Problem | null> => {
+  if (!SLUG_PATTERN.test(slug)) return null;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("problems")
+    .select("*, problem_tags(tag_type, tag)")
+    .eq("slug", slug)
+    .eq("is_published", true)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  return {
+    id: data.id,
+    slug: data.slug,
+    title: data.title,
+    description: data.description,
+    input: data.input,
+    output: data.output,
+    constraints: data.constraints,
+    examples: toExamples(data.examples),
+    difficulty: data.difficulty,
+    estimatedMinutes: data.estimated_minutes,
+    languages: toLanguages(data.languages),
+    tags: toProblemTags(data.problem_tags),
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+});
 
 const TAG_TYPES = new Set<ProblemTag["type"]>(["algorithm", "data_structure", "java", "c"]);
 
@@ -76,7 +130,7 @@ export async function listProblems(filters: ProblemFilters, userId: string | nul
     title: p.title,
     difficulty: p.difficulty,
     estimatedMinutes: p.estimated_minutes,
-    languages: p.languages.filter((l): l is Language => l === "java" || l === "c"),
+    languages: toLanguages(p.languages),
     tags: toProblemTags(p.problem_tags),
     status: statusById.get(p.id) ?? "unsolved",
   }));
