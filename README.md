@@ -44,7 +44,25 @@ http://localhost:3000 에서 확인할 수 있습니다.
 
 `.env.local.example`을 참고하세요. Gemini API 키와 Supabase service role 키는 서버에서만 사용하며 클라이언트에 노출하지 않습니다.
 
-> Supabase 설정, Gemini API 설정, Vercel 배포, 무료 플랜 주의사항, Database Migration 문서는 해당 Phase를 진행하면서 추가합니다.
+## Database (Supabase)
+
+스키마는 `supabase/migrations/`의 SQL 파일로 버전 관리합니다.
+
+### 로컬 DB에서 개발·검증
+
+[Docker Desktop](https://www.docker.com/products/docker-desktop/)을 실행한 상태에서:
+
+```bash
+npm run db:start   # 로컬 Supabase 실행 + migration 적용 (첫 실행 시 이미지 다운로드)
+npm run db:test    # pgTAP 테스트 (supabase/tests/database)
+npm run db:lint    # 스키마 lint
+npm run db:reset   # DB를 비우고 migration부터 다시 적용
+npm run db:stop
+```
+
+로컬 Studio는 http://127.0.0.1:54323 에서 열립니다.
+
+> Supabase 클라우드 설정, Gemini API 설정, Vercel 배포, 무료 플랜 주의사항은 해당 Phase를 진행하면서 추가합니다.
 
 ## 문서
 

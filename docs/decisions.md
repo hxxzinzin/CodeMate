@@ -12,6 +12,7 @@ CodeMate의 중요한 기술적 의사결정과 그 이유를 기록합니다.
 | [005](#adr-005-작성-중인-코드는-localstorage에-저장) | 작성 중인 코드는 localStorage에 저장 | Accepted |
 | [006](#adr-006-프로젝트별-저장소와-api-키-분리) | 프로젝트별 저장소와 API 키 분리 | Accepted |
 | [007](#adr-007-ai-활용-사실의-공개-방식) | AI 활용 사실의 공개 방식 | Accepted |
+| [008](#adr-008-로컬-supabase와-pgtap으로-db-변경-검증) | 로컬 Supabase와 pgTAP으로 DB 변경 검증 | Accepted |
 
 ## 템플릿
 
@@ -154,3 +155,23 @@ Vercel(Hobby) + Supabase(Free) + Gemini API(Free tier) + GitHub를 사용한다.
 
 ### 이유
 커밋 단위의 기계적인 표기보다, 요구사항 정의, 설계 결정, 검토 과정을 문서로 남기는 편이 개발 과정을 더 정확하게 보여준다.
+
+## ADR-008: 로컬 Supabase와 pgTAP으로 DB 변경 검증
+
+- 날짜: 2026-10-01
+- 상태: Accepted
+
+### 배경
+Supabase 무료 플랜은 활성 프로젝트가 2개뿐이고 CodeMate와 DataMate가 하나씩 사용한다(ADR-006). 클라우드에 테스트용 프로젝트를 따로 둘 수 없다.
+
+### 결정
+- DB 변경은 먼저 Docker 기반 로컬 Supabase(`npm run db:start`)에 적용해 검증한 뒤 클라우드에 반영한다.
+- 스키마 제약, 트리거, RLS는 pgTAP 테스트(`supabase/tests/database`, `npm run db:test`)로 검증한다.
+
+### 대안
+- 클라우드 DB에 바로 적용: 설치가 필요 없지만, 실수하면 운영 DB를 직접 고쳐야 한다.
+
+### 결과 / 트레이드오프
+- 로컬 개발에 Docker Desktop이 필요하고, 실행 중 메모리를 2~4GB 사용한다.
+- 쓰지 않는 서비스(Storage, Realtime, Edge Functions 등)는 제외하고 실행한다.
+- RLS 같은 보안 규칙을 테스트 코드로 남겨, 이후 변경에서도 같은 검증을 반복할 수 있다.
