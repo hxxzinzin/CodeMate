@@ -62,7 +62,33 @@ npm run db:stop
 
 로컬 Studio는 http://127.0.0.1:54323 에서 열립니다.
 
-> Supabase 클라우드 설정, Gemini API 설정, Vercel 배포, 무료 플랜 주의사항은 해당 Phase를 진행하면서 추가합니다.
+### 클라우드에 migration 적용
+
+```bash
+npx supabase login                      # 최초 1회 (브라우저 인증)
+npx supabase link --project-ref <ref>   # 최초 1회
+npx supabase db push --dry-run          # 적용될 migration 미리보기
+npx supabase db push
+```
+
+> Windows PowerShell에서 `npx`가 실행 정책 때문에 막히면 `npx.cmd`로 실행하세요.
+
+## 로그인 (Google OAuth) 설정
+
+1. **Google Cloud Console** → API 및 서비스
+   - OAuth 동의 화면: 외부(External), 앱 이름 `CodeMate`, 범위는 `email`, `profile`, `openid`
+   - 사용자 인증 정보 → OAuth 클라이언트 ID 만들기 → 웹 애플리케이션
+     - 승인된 JavaScript 원본: `http://localhost:3000` (배포 후 Vercel 주소 추가)
+     - 승인된 리디렉션 URI: `https://<project-ref>.supabase.co/auth/v1/callback`
+2. **Supabase Dashboard** → Authentication → Sign In / Providers → Google 활성화, Client ID와 Client Secret 입력
+3. **Supabase Dashboard** → Authentication → URL Configuration
+   - Site URL: `http://localhost:3000` (배포 후 Vercel 주소로 변경)
+   - Redirect URLs: `http://localhost:3000/**` (배포 후 `https://<vercel 주소>/**` 추가)
+
+로그인 흐름: `/login` → Google → Supabase → `/auth/callback`(code를 세션 쿠키로 교환) → 원래 가려던 페이지.
+로그인이 필요한 페이지(`/dashboard`, `/progress`, `/settings`)는 `proxy.ts`가 `/login`으로 보내고, `/problems`는 Demo Mode로 공개합니다.
+
+> Gemini API 설정, Vercel 배포, 무료 플랜 주의사항은 해당 Phase를 진행하면서 추가합니다.
 
 ## 문서
 
