@@ -42,3 +42,6 @@ export type ProblemSummary = Pick<
 >;
 
 export type ProblemStatus = "unsolved" | "attempted" | "solved";
+
+/** 목록 화면의 한 줄. 비로그인 사용자는 status가 항상 unsolved다. */
+export type ProblemListItem = ProblemSummary & { status: ProblemStatus };
