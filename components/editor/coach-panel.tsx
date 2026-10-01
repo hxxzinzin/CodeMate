@@ -17,6 +17,10 @@ type Props = {
   isLoggedIn: boolean;
   open: boolean;
   onToggle: () => void;
+  /** 오늘 AI 사용량 표시 (예: "오늘 AI 5/20회") */
+  usageText: string | null;
+  /** AI를 호출한 뒤 사용량을 다시 불러온다. */
+  onAiUsed: () => void;
 };
 
 type Pending = "review" | "explain" | "solution" | null;
@@ -28,7 +32,7 @@ const MAX_QUESTION = 300;
  * AI 코치: 코드 리뷰, 개념 질문, 정답 보기.
  * 정답은 AI가 아닌 검증된 정답 코드·해설을 보여주고, 보기 전에 한 번 더 확인한다.
  */
-export function CoachPanel({ slug, language, getCode, isLoggedIn, open, onToggle }: Props) {
+export function CoachPanel({ slug, language, getCode, isLoggedIn, open, onToggle, usageText, onAiUsed }: Props) {
   const [pending, setPending] = useState<Pending>(null);
   const [error, setError] = useState<string | null>(null);
   const [review, setReview] = useState<string | null>(null);
@@ -57,6 +61,8 @@ export function CoachPanel({ slug, language, getCode, isLoggedIn, open, onToggle
       return null;
     } finally {
       setPending(null);
+      // 정답 보기는 AI를 쓰지 않으므로 사용량이 바뀌지 않는다.
+      if (kind !== "solution") onAiUsed();
     }
   }
 
@@ -190,6 +196,7 @@ export function CoachPanel({ slug, language, getCode, isLoggedIn, open, onToggle
 
               <p className="text-[11px] text-muted-foreground">
                 AI는 코드를 실행하지 않고 읽기만 해요. 틀린 설명이 있을 수 있으니 직접 확인해보세요.
+                {usageText && ` · ${usageText}`}
               </p>
             </>
           )}

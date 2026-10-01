@@ -22,6 +22,10 @@ type Props = {
   /** 열림 상태는 작업 영역이 관리한다. (힌트·AI 코치 패널 중 하나만 열리도록) */
   open: boolean;
   onToggle: () => void;
+  /** 오늘 AI 사용량 표시 (예: "오늘 AI 2/3회") */
+  usageText: string | null;
+  /** AI를 호출한 뒤 사용량을 다시 불러온다. */
+  onAiUsed: () => void;
 };
 
 type HintData = { level: HintLevel; content: string };
@@ -41,6 +45,8 @@ export function HintPanel({
   initialViewedLevel,
   open,
   onToggle,
+  usageText,
+  onAiUsed,
 }: Props) {
   const [hints, setHints] = useState<HintData[]>([]);
   const [aiHint, setAiHint] = useState<HintData | null>(null);
@@ -93,6 +99,7 @@ export function HintPanel({
       setError("AI 코치가 잠시 쉬고 있어요. 잠시 후 다시 시도해주세요.");
     } finally {
       setPending(null);
+      onAiUsed();
     }
   }
 
@@ -155,20 +162,25 @@ export function HintPanel({
                 {pending === "static" ? "불러오는 중…" : `힌트 ${nextLevel}단계 보기 · ${HINT_LEVEL_LABELS[nextLevel]}`}
               </Button>
             )}
-            {isLoggedIn ? (
-              <Button size="sm" variant="ghost" disabled={pending !== null} onClick={loadAiHint}>
-                <SparklesIcon />
-                {pending === "ai" ? "AI 코치가 코드를 읽는 중…" : "내 코드에 맞춘 AI 힌트"}
-              </Button>
-            ) : (
+            {/* AI 힌트는 Demo도 체험할 수 있다. (하루 횟수 제한) */}
+            <Button size="sm" variant="ghost" disabled={pending !== null} onClick={loadAiHint}>
+              <SparklesIcon />
+              {pending === "ai" ? "AI 코치가 코드를 읽는 중…" : "내 코드에 맞춘 AI 힌트"}
+            </Button>
+            {usageText && <span className="self-center text-[11px] text-muted-foreground">{usageText}</span>}
+          </div>
+          {!isLoggedIn && (
+            <p className="text-[11px] text-muted-foreground">
+              체험 중이에요.{" "}
               <Link
                 href={`/login?next=${encodeURIComponent(`/problems/${slug}`)}`}
-                className="self-center text-xs text-muted-foreground underline underline-offset-4"
+                className="underline underline-offset-4"
               >
-                로그인하면 내 코드에 맞춘 AI 힌트를 받을 수 있어요
+                로그인
               </Link>
-            )}
-          </div>
+              하면 AI 코치를 하루 20번까지 쓸 수 있어요.
+            </p>
+          )}
 
           <div aria-live="polite">
             {error && (
