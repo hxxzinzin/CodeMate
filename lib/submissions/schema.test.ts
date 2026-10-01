@@ -45,6 +45,29 @@ describe("submissionRequestSchema", () => {
     expect(errorOf({ ...valid, code: written })).toBeNull();
   });
 
+  it("풀이 시간이 음수·소수·문자면 한국어 안내와 함께 거부하고, 없어도 된다", () => {
+    const message = "풀이 시간 형식이 올바르지 않아요.";
+    expect(errorOf({ ...valid, solvingTimeSec: -10 })).toBe(message);
+    expect(errorOf({ ...valid, solvingTimeSec: 1.5 })).toBe(message);
+    expect(errorOf({ ...valid, solvingTimeSec: "60" })).toBe(message);
+    expect(errorOf({ ...valid, solvingTimeSec: 600 })).toBeNull();
+    expect(errorOf(valid)).toBeNull();
+  });
+
+  it("모든 검증 오류 메시지는 한국어다 (zod 기본 영어 메시지가 사용자에게 노출되지 않게)", () => {
+    const inputs = [
+      {},
+      { ...valid, slug: 1 },
+      { ...valid, code: 123 },
+      { ...valid, language: 1 },
+      { ...valid, selfReport: 1 },
+      { ...valid, solvingTimeSec: null },
+    ];
+    for (const input of inputs) {
+      expect(errorOf(input)).toMatch(/[가-힣]/);
+    }
+  });
+
   it("slug 형식이 잘못되면 거부한다", () => {
     expect(errorOf({ ...valid, slug: "../etc/passwd" })).toBe("잘못된 문제 주소예요.");
   });

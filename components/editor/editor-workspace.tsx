@@ -6,6 +6,7 @@ import { RotateCcwIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EditorLoading } from "@/components/editor/editor-loading";
 import { SubmitPanel } from "@/components/editor/submit-panel";
+import { useSolvingTimer } from "@/components/editor/use-solving-timer";
 import {
   browserStore,
   clearDraft,
@@ -53,6 +54,7 @@ export default function EditorWorkspace({ slug, languages, isLoggedIn }: Props) 
   }));
   const [status, setStatus] = useState<SaveStatus>(store ? "idle" : "unavailable");
   const [confirmingReset, setConfirmingReset] = useState(false);
+  const solvingTimer = useSolvingTimer(store, slug);
 
   // 아직 저장되지 않은 마지막 변경. 탭을 닫거나 숨길 때 바로 저장하기 위해 보관한다.
   const pending = useRef<{ language: Language; code: string } | null>(null);
@@ -159,11 +161,17 @@ export default function EditorWorkspace({ slug, languages, isLoggedIn }: Props) 
         slug={slug}
         language={language}
         getCode={() => codeByLanguage[language]}
+        getSolvingSeconds={solvingTimer.elapsedSeconds}
+        onSubmitted={(data) => {
+          // 맞힌 뒤에는 다음 풀이(복습 등)를 위해 시간을 새로 잰다. 틀리면 이어서 잰다.
+          if (data.result === "self_correct" || data.result === "ac") solvingTimer.reset();
+        }}
         isLoggedIn={isLoggedIn}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t px-3 py-1.5 text-xs text-muted-foreground">
         <SaveStatusText status={status} />
+        <p title="이 화면을 보고 있던 시간만 셉니다">풀이 시간 {solvingTimer.minutes}분</p>
         <p className="hidden sm:block">
           <kbd className="rounded border px-1 font-mono">Ctrl</kbd>+<kbd className="rounded border px-1 font-mono">M</kbd>{" "}
           Tab으로 에디터 밖으로 이동
