@@ -1,8 +1,8 @@
 import "server-only";
 import type { ApiErrorCode } from "@/lib/api/response";
-import { generateText } from "@/lib/ai/gemini";
 import { buildHintPrompt } from "@/lib/ai/hint-prompt";
 import { COACH_SYSTEM_PROMPT } from "@/lib/ai/prompts";
+import { type AiCaller, callAi } from "@/lib/ai/usage";
 import { getHintEvents, getStaticHint } from "@/lib/db/hints";
 import { getProblemBySlug } from "@/lib/db/problems";
 import { recordLearningEvent } from "@/lib/db/submissions";
@@ -47,8 +47,11 @@ export async function getStaticHintFor(userId: string | null, slug: string, leve
 
 export type AiHintResult = { ok: true; level: HintLevel; content: string; model: string } | Failure;
 
-/** 사용자 코드에 맞춘 AI 힌트. AI 오류(AiError)는 호출한 쪽에서 응답으로 바꾼다. */
-export async function getAiHint(userId: string, req: AiHintRequest): Promise<AiHintResult> {
+/**
+ * 사용자 코드에 맞춘 AI 힌트. 로그인 사용자와 Demo 모두 쓸 수 있다. (Demo는 하루 체험 횟수 제한)
+ * AI 오류(AiError, AiQuotaError)는 호출한 쪽에서 응답으로 바꾼다.
+ */
+export async function getAiHint(caller: AiCaller, req: AiHintRequest): Promise<AiHintResult> {
   const problem = await getProblemBySlug(req.slug);
   if (!problem) return { ok: false, code: "NOT_FOUND", message: "문제를 찾을 수 없어요." };
   if (!problem.languages.includes(req.language)) {
@@ -57,21 +60,26 @@ export async function getAiHint(userId: string, req: AiHintRequest): Promise<AiH
 
   const level = req.level as HintLevel;
   const staticHint = await getStaticHint(problem.id, level);
-  const result = await generateText({
+  const result = await callAi({
+    kind: "hint",
+    caller,
+    problemId: problem.id,
     system: COACH_SYSTEM_PROMPT,
     prompt: buildHintPrompt({ problem, level, language: req.language, code: req.code, staticHint }),
     maxOutputTokens: 400,
+    meta: { slug: problem.slug, level, language: req.language },
   });
 
   const { text, removed } = stripLongCodeBlocks(result.text);
-  await recordLearningEvent(userId, problem.id, "hint_request", {
-    level,
-    source: "ai",
-    model: result.model,
-    tokensIn: result.tokensIn,
-    tokensOut: result.tokensOut,
-    removedCodeBlocks: removed,
-  });
+  if ("userId" in caller) {
+    await recordLearningEvent(caller.userId, problem.id, "hint_request", {
+      level,
+      source: "ai",
+      model: result.model,
+      cached: result.cached,
+      removedCodeBlocks: removed,
+    });
+  }
 
   return { ok: true, level, content: text, model: result.model };
 }
