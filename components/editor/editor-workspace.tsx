@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { RotateCcwIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EditorLoading } from "@/components/editor/editor-loading";
+import { CoachPanel } from "@/components/editor/coach-panel";
 import { HintPanel } from "@/components/editor/hint-panel";
 import { SubmitPanel } from "@/components/editor/submit-panel";
 import { useSolvingTimer } from "@/components/editor/use-solving-timer";
@@ -58,6 +59,9 @@ export default function EditorWorkspace({ slug, languages, isLoggedIn, initialVi
   const [status, setStatus] = useState<SaveStatus>(store ? "idle" : "unavailable");
   const [confirmingReset, setConfirmingReset] = useState(false);
   const solvingTimer = useSolvingTimer(store, slug);
+  // 힌트·AI 코치 패널은 하나만 열어 에디터 공간을 지킨다.
+  const [openPanel, setOpenPanel] = useState<"hint" | "coach" | null>(null);
+  const togglePanel = (panel: "hint" | "coach") => setOpenPanel((current) => (current === panel ? null : panel));
 
   // 아직 저장되지 않은 마지막 변경. 탭을 닫거나 숨길 때 바로 저장하기 위해 보관한다.
   const pending = useRef<{ language: Language; code: string } | null>(null);
@@ -185,6 +189,17 @@ export default function EditorWorkspace({ slug, languages, isLoggedIn, initialVi
         isLoggedIn={isLoggedIn}
         solvingMinutes={solvingTimer.minutes}
         initialViewedLevel={initialViewedHintLevel}
+        open={openPanel === "hint"}
+        onToggle={() => togglePanel("hint")}
+      />
+
+      <CoachPanel
+        slug={slug}
+        language={language}
+        getCode={() => codeByLanguage[language]}
+        isLoggedIn={isLoggedIn}
+        open={openPanel === "coach"}
+        onToggle={() => togglePanel("coach")}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t px-3 py-1.5 text-xs text-muted-foreground">
