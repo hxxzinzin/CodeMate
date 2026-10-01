@@ -38,6 +38,9 @@ export type NewSubmission = {
   attemptCount: number;
   /** 서버에서 상한을 적용한 풀이 시간(초). 측정값이 없으면 null */
   solvingTimeSec: number | null;
+  /** 이번 시도(직전 제출 이후)에 본 힌트 수와 최고 단계 */
+  hintCount: number;
+  maxHintLevel: number;
   judgeDetail: Json | null;
 };
 
@@ -53,6 +56,8 @@ export async function insertSubmission(s: NewSubmission): Promise<{ id: string; 
       result: s.result,
       attempt_count: s.attemptCount,
       solving_time_sec: s.solvingTimeSec,
+      hint_count: s.hintCount,
+      max_hint_level: s.maxHintLevel,
       judge_detail: s.judgeDetail,
     })
     .select("id, created_at")

@@ -1,0 +1,185 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { ChevronDownIcon, LightbulbIcon, SparklesIcon } from "lucide-react";
+import { Markdown } from "@/components/markdown";
+import { Button } from "@/components/ui/button";
+import type { ApiResult } from "@/lib/api/response";
+import { HINT_LEVEL_LABELS, type HintLevel } from "@/lib/hints/rules";
+import { cn } from "@/lib/utils";
+import type { Language } from "@/types/problem";
+
+type Props = {
+  slug: string;
+  language: Language;
+  getCode: () => string;
+  isLoggedIn: boolean;
+  /** 화면을 본 시간(분). 10분 전에는 먼저 고민해보도록 안내한다. */
+  solvingMinutes: number;
+  /** 이전에 연 정적 힌트의 최고 단계 (로그인 사용자) */
+  initialViewedLevel: number;
+};
+
+type HintData = { level: HintLevel; content: string };
+const THINK_FIRST_MINUTES = 10;
+
+/**
+ * 단계별 힌트. AI 버튼을 강조하지 않고, 먼저 스스로 생각하도록 유도한다. (기획서 40)
+ * 1) 미리 작성된 힌트를 1단계부터 순서대로 연다. (AI 호출 없음)
+ * 2) 그래도 막히면 지금 코드에 맞춘 AI 힌트를 받는다.
+ */
+export function HintPanel({ slug, language, getCode, isLoggedIn, solvingMinutes, initialViewedLevel }: Props) {
+  const [open, setOpen] = useState(false);
+  const [hints, setHints] = useState<HintData[]>([]);
+  const [aiHint, setAiHint] = useState<HintData | null>(null);
+  const [pending, setPending] = useState<"static" | "ai" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const highestOpened = Math.max(initialViewedLevel, ...hints.map((h) => h.level), 0);
+  const nextLevel = highestOpened < 4 ? ((highestOpened + 1) as HintLevel) : null;
+  /** 이전 방문에서 봤지만 아직 화면에 다시 열지 않은 단계 */
+  const hiddenViewed = initialViewedLevel - hints.filter((h) => h.level <= initialViewedLevel).length;
+
+  async function loadStatic(levels: HintLevel[]) {
+    setPending("static");
+    setError(null);
+    try {
+      const loaded: HintData[] = [];
+      for (const level of levels) {
+        const res = await fetch(`/api/hints?slug=${encodeURIComponent(slug)}&level=${level}`);
+        const body = (await res.json()) as ApiResult<HintData>;
+        if (!body.ok) {
+          setError(body.message);
+          break;
+        }
+        loaded.push(body.data);
+      }
+      setHints((prev) => {
+        const byLevel = new Map([...prev, ...loaded].map((h) => [h.level, h]));
+        return [...byLevel.values()].sort((a, b) => a.level - b.level);
+      });
+    } catch {
+      setError("힌트를 불러오지 못했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setPending(null);
+    }
+  }
+
+  async function loadAiHint() {
+    setPending("ai");
+    setError(null);
+    try {
+      const res = await fetch("/api/ai/hint", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, language, code: getCode(), level: Math.max(1, highestOpened) }),
+      });
+      const body = (await res.json()) as ApiResult<HintData>;
+      if (body.ok) setAiHint(body.data);
+      else setError(body.message);
+    } catch {
+      setError("AI 코치가 잠시 쉬고 있어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setPending(null);
+    }
+  }
+
+  return (
+    <div className="border-t">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls="hint-panel"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-3 py-2 text-sm text-muted-foreground hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
+      >
+        <span className="flex items-center gap-1.5">
+          <LightbulbIcon className="size-4" aria-hidden />
+          막혔다면 힌트를 받아볼 수 있어요
+        </span>
+        <ChevronDownIcon className={cn("size-4 transition-transform", open && "rotate-180")} aria-hidden />
+      </button>
+
+      {open && (
+        <div id="hint-panel" className="flex max-h-[40vh] flex-col gap-3 overflow-y-auto px-3 pb-3">
+          {solvingMinutes < THINK_FIRST_MINUTES && hints.length === 0 && initialViewedLevel === 0 && (
+            <p className="rounded-md bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+              먼저 {THINK_FIRST_MINUTES}분 정도 직접 고민해보세요. 스스로 떠올린 풀이가 가장 오래 기억에 남아요.
+            </p>
+          )}
+
+          {hints.length > 0 && (
+            <ol className="flex flex-col gap-2">
+              {hints.map((h) => (
+                <li key={h.level} className="rounded-md border px-3 py-2">
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">
+                    힌트 {h.level}단계 · {HINT_LEVEL_LABELS[h.level]}
+                  </p>
+                  <Markdown>{h.content}</Markdown>
+                </li>
+              ))}
+            </ol>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            {hiddenViewed > 0 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={pending !== null}
+                onClick={() =>
+                  loadStatic(
+                    Array.from({ length: initialViewedLevel }, (_, i) => (i + 1) as HintLevel).filter(
+                      (lv) => !hints.some((h) => h.level === lv),
+                    ),
+                  )
+                }
+              >
+                이전에 본 힌트 다시 보기
+              </Button>
+            )}
+            {nextLevel && (
+              <Button size="sm" variant="outline" disabled={pending !== null} onClick={() => loadStatic([nextLevel])}>
+                {pending === "static" ? "불러오는 중…" : `힌트 ${nextLevel}단계 보기 · ${HINT_LEVEL_LABELS[nextLevel]}`}
+              </Button>
+            )}
+            {isLoggedIn ? (
+              <Button size="sm" variant="ghost" disabled={pending !== null} onClick={loadAiHint}>
+                <SparklesIcon />
+                {pending === "ai" ? "AI 코치가 코드를 읽는 중…" : "내 코드에 맞춘 AI 힌트"}
+              </Button>
+            ) : (
+              <Link
+                href={`/login?next=${encodeURIComponent(`/problems/${slug}`)}`}
+                className="self-center text-xs text-muted-foreground underline underline-offset-4"
+              >
+                로그인하면 내 코드에 맞춘 AI 힌트를 받을 수 있어요
+              </Link>
+            )}
+          </div>
+
+          <div aria-live="polite">
+            {error && (
+              <p role="alert" className="text-xs text-destructive">
+                {error}
+              </p>
+            )}
+            {aiHint && (
+              <div className="rounded-md border border-dashed px-3 py-2">
+                <p className="mb-1 flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                  <SparklesIcon className="size-3" aria-hidden />
+                  AI 코치 · 지금 코드 기준 힌트
+                </p>
+                <Markdown>{aiHint.content}</Markdown>
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  AI는 코드를 실행하지 않고 읽기만 해요. 틀린 설명이 있을 수 있으니 직접 확인해보세요.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -17,7 +17,11 @@ export type ApiErrorCode =
   | "NOT_FOUND"
   | "UNSUPPORTED_LANGUAGE"
   | "TOO_MANY_REQUESTS"
-  | "INTERNAL";
+  | "INTERNAL"
+  /** 외부 서비스(AI)가 응답하지 않거나 설정되지 않음 */
+  | "SERVICE_UNAVAILABLE"
+  /** 외부 서비스(AI)가 처리하지 못함 */
+  | "UPSTREAM_ERROR";
 
 const STATUS: Record<ApiErrorCode, number> = {
   UNAUTHORIZED: 401,
@@ -27,6 +31,8 @@ const STATUS: Record<ApiErrorCode, number> = {
   UNSUPPORTED_LANGUAGE: 400,
   TOO_MANY_REQUESTS: 429,
   INTERNAL: 500,
+  SERVICE_UNAVAILABLE: 503,
+  UPSTREAM_ERROR: 502,
 };
 
 export function ok<T>(data: T, status = 200) {
