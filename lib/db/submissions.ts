@@ -36,6 +36,8 @@ export type NewSubmission = {
   code: string;
   result: SubmissionResult;
   attemptCount: number;
+  /** 서버에서 상한을 적용한 풀이 시간(초). 측정값이 없으면 null */
+  solvingTimeSec: number | null;
   judgeDetail: Json | null;
 };
 
@@ -50,6 +52,7 @@ export async function insertSubmission(s: NewSubmission): Promise<{ id: string; 
       code: s.code,
       result: s.result,
       attempt_count: s.attemptCount,
+      solving_time_sec: s.solvingTimeSec,
       judge_detail: s.judgeDetail,
     })
     .select("id, created_at")

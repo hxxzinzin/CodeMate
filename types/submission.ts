@@ -25,3 +25,14 @@ export type Submission = {
   solutionRevealed: boolean;
   createdAt: string;
 };
+
+/** POST /api/submissions 성공 응답 (서버·클라이언트 공용) */
+export type SubmitResponse = {
+  submissionId: string;
+  result: SubmissionResult;
+  attemptCount: number;
+  /** 이번 제출로 처음 해결했는지 */
+  newlySolved: boolean;
+  /** 갱신된 연속 학습일. 학습 상태 저장에 실패하면 null */
+  streak: number | null;
+};
