@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { CheckCircle2Icon, CircleDashedIcon, CircleIcon } from "lucide-react";
+import { DemoNotice } from "@/components/auth/demo-notice";
 import { PageHeader } from "@/components/layout/page-header";
 import { ProblemMeta } from "@/components/problems/problem-meta";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +20,7 @@ export default function ProblemsPage() {
     <>
       {/* 필터·검색은 #10, 상세 화면 링크는 #11에서 추가한다. */}
       <PageHeader title="문제" description="난이도와 태그를 보고 직접 문제를 골라 풀 수 있어요." />
+      <DemoNotice />
 
       <ul className="flex flex-col gap-3">
         {mockProblems.map((problem) => {
