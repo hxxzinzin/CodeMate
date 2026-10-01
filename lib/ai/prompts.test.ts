@@ -7,6 +7,9 @@ describe("prompts", () => {
     expect(COACH_SYSTEM_PROMPT).toContain("완성된 정답 코드를 주지 않는다");
     expect(COACH_SYSTEM_PROMPT).toContain("실행 결과를 확인한 것처럼 말하지 않는다");
     expect(COACH_SYSTEM_PROMPT).toContain("<user_code>");
+    // 실제 응답에서 발견한 문제: 화면이 렌더링하지 못하는 수식 표기($O(N)$), Python 예시
+    expect(COACH_SYSTEM_PROMPT).toContain("수식 표기");
+    expect(COACH_SYSTEM_PROMPT).toContain("Java 또는 C");
   });
 
   it("문제 맥락에는 설명·입출력·제한만 넣는다", () => {
