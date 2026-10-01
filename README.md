@@ -78,17 +78,50 @@ npx supabase db push
 1. **Google Cloud Console** → API 및 서비스
    - OAuth 동의 화면: 외부(External), 앱 이름 `CodeMate`, 범위는 `email`, `profile`, `openid`
    - 사용자 인증 정보 → OAuth 클라이언트 ID 만들기 → 웹 애플리케이션
-     - 승인된 JavaScript 원본: `http://localhost:3000` (배포 후 Vercel 주소 추가)
+     - 승인된 JavaScript 원본: `http://localhost:3000`, 배포 주소
      - 승인된 리디렉션 URI: `https://<project-ref>.supabase.co/auth/v1/callback`
+       (Google은 Supabase로 돌려보내므로, Vercel에 배포해도 이 값은 바뀌지 않습니다)
 2. **Supabase Dashboard** → Authentication → Sign In / Providers → Google 활성화, Client ID와 Client Secret 입력
 3. **Supabase Dashboard** → Authentication → URL Configuration
-   - Site URL: `http://localhost:3000` (배포 후 Vercel 주소로 변경)
-   - Redirect URLs: `http://localhost:3000/**` (배포 후 `https://<vercel 주소>/**` 추가)
+   - Site URL: 배포 주소 (예: `https://code-mate-gold.vercel.app`)
+   - Redirect URLs: `http://localhost:3000/**`, `https://<배포 주소>/**`, Preview용 `https://code-mate-*.vercel.app/**`
 
 로그인 흐름: `/login` → Google → Supabase → `/auth/callback`(code를 세션 쿠키로 교환) → 원래 가려던 페이지.
 로그인이 필요한 페이지(`/dashboard`, `/progress`, `/settings`)는 `proxy.ts`가 `/login`으로 보내고, `/problems`는 Demo Mode로 공개합니다.
 
-> Gemini API 설정, Vercel 배포, 무료 플랜 주의사항은 해당 Phase를 진행하면서 추가합니다.
+## 배포 (Vercel)
+
+1. Vercel에 GitHub 계정으로 로그인 → **Add New → Project** → 저장소 Import
+2. Framework Preset은 Next.js로 자동 인식됩니다. Build 설정은 기본값(`npm run build`)을 사용합니다.
+3. **Environment Variables** (Production, Preview 체크)
+
+   | 이름 | 값 | 노출 |
+   |---|---|---|
+   | `NEXT_PUBLIC_SUPABASE_URL` | `https://<project-ref>.supabase.co` | 브라우저 |
+   | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase Publishable key | 브라우저 |
+   | `SUPABASE_SECRET_KEY` | Supabase Secret key | 서버 전용 |
+   | `GEMINI_API_KEY` | Google AI Studio API key | 서버 전용 |
+   | `GEMINI_MODEL` | 예: `gemini-3.8-flash` | 서버 전용 |
+
+4. Deploy 후 Supabase **URL Configuration**에 배포 주소를 추가합니다. (위 로그인 설정 3번)
+5. 확인
+   - `https://<배포 주소>/api/health` → `{"ok":true}` 이면 DB 연결 정상
+   - `/login`에서 Google 로그인 → `/dashboard` 이동
+
+`main`에 merge하면 Production, PR과 다른 브랜치는 Preview로 자동 배포됩니다.
+Preview도 같은 Supabase 프로젝트(운영 DB)를 사용합니다.
+
+## 무료 플랜 사용 시 주의사항
+
+이 프로젝트는 결제 정보 없이 무료 플랜만 사용합니다. 한도와 정책은 바뀔 수 있으니 공식 문서에서 최신 기준을 확인하세요.
+
+| 서비스 | 주의할 점 | 공식 문서 |
+|---|---|---|
+| Vercel Hobby | 개인·비상업용. 함수 실행 시간, 빌드 횟수 제한 | https://vercel.com/docs/plans/hobby |
+| Supabase Free | 활성 프로젝트 2개, DB 용량 제한. 일정 기간 활동이 없으면 프로젝트가 일시정지됨 (대시보드에서 Restore) | https://supabase.com/pricing |
+| Gemini API Free tier | 모델별 분당·일일 요청 한도. 무료 등급 데이터는 서비스 개선에 사용될 수 있음 | https://ai.google.dev/gemini-api/docs/rate-limits |
+
+> Gemini API 연동 방법은 Phase 6에서 추가합니다.
 
 ## 문서
 
