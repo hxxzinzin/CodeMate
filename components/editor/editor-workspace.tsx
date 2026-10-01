@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { RotateCcwIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EditorLoading } from "@/components/editor/editor-loading";
+import { SubmitPanel } from "@/components/editor/submit-panel";
 import {
   browserStore,
   clearDraft,
@@ -32,6 +33,7 @@ type SaveStatus = "idle" | "saved" | "unavailable" | "too-long";
 type Props = {
   slug: string;
   languages: Language[];
+  isLoggedIn: boolean;
 };
 
 /**
@@ -40,7 +42,7 @@ type Props = {
  * 그래서 첫 state를 만들 때 바로 localStorage를 읽을 수 있고,
  * "템플릿이 먼저 저장되어 기존 코드를 덮어쓰는" 순서 문제가 생기지 않는다.
  */
-export default function EditorWorkspace({ slug, languages }: Props) {
+export default function EditorWorkspace({ slug, languages, isLoggedIn }: Props) {
   const [store] = useState(browserStore);
   const [language, setLanguage] = useState<Language>(
     () => loadLastLanguage(store, slug, languages) ?? defaultLanguage(languages),
@@ -152,6 +154,13 @@ export default function EditorWorkspace({ slug, languages }: Props) {
       <div className="h-[360px] lg:h-[calc(100vh-16rem)] lg:min-h-[420px]">
         <CodeEditor language={language} value={codeByLanguage[language]} onChange={handleChange} />
       </div>
+
+      <SubmitPanel
+        slug={slug}
+        language={language}
+        getCode={() => codeByLanguage[language]}
+        isLoggedIn={isLoggedIn}
+      />
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t px-3 py-1.5 text-xs text-muted-foreground">
         <SaveStatusText status={status} />
