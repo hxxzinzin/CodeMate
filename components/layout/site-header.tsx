@@ -2,6 +2,7 @@ import Link from "next/link";
 import { MainNav } from "./main-nav";
 import { MobileNav } from "./mobile-nav";
 import { ThemeToggle } from "./theme-toggle";
+import { UserMenu } from "./user-menu";
 
 export function SiteHeader() {
   return (
@@ -15,8 +16,9 @@ export function SiteHeader() {
           CodeMate
         </Link>
         <MainNav />
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-1">
           <ThemeToggle />
+          <UserMenu />
         </div>
       </div>
     </header>

@@ -10,8 +10,10 @@ import { getSupabasePublicEnv } from "./env";
  * 요청마다 새로 만들어야 한다. (사용자 간에 클라이언트를 공유하면 안 됨)
  */
 export async function createClient() {
-  const { url, publishableKey } = getSupabasePublicEnv();
+  // cookies()를 먼저 호출해야 이 클라이언트를 쓰는 페이지가 항상 "요청마다 렌더링(dynamic)"으로 분류된다.
+  // 순서가 반대면 빌드 시 환경변수가 없을 때 예외가 먼저 나서, 로그인 상태가 고정된 정적 페이지가 만들어진다.
   const cookieStore = await cookies();
+  const { url, publishableKey } = getSupabasePublicEnv();
 
   return createServerClient<Database>(url, publishableKey, {
     cookies: {

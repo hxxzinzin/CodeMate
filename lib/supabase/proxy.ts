@@ -2,9 +2,17 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabasePublicEnv } from "./env";
 
+/** 로그인이 필요한 경로. 문제 목록(/problems)은 Demo Mode로 공개한다. */
+const PROTECTED_PATHS = ["/dashboard", "/progress", "/settings"];
+
+function isProtected(pathname: string): boolean {
+  return PROTECTED_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
 /**
  * 매 요청마다 세션 토큰을 확인하고, 만료가 가까우면 갱신해 응답 쿠키에 다시 쓴다.
  * 서버 컴포넌트는 쿠키를 쓸 수 없기 때문에 이 단계가 필요하다.
+ * 로그인이 필요한 경로에 비로그인 사용자가 오면 /login으로 보낸다.
  */
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -36,7 +44,19 @@ export async function updateSession(request: NextRequest) {
   });
 
   // 이 호출 사이에 다른 코드를 넣지 않는다. 토큰 검증·갱신이 여기서 일어난다.
-  await supabase.auth.getClaims();
+  const { data } = await supabase.auth.getClaims();
+
+  if (!data && isProtected(request.nextUrl.pathname)) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    loginUrl.search = "";
+    loginUrl.searchParams.set("next", request.nextUrl.pathname + request.nextUrl.search);
+
+    // 갱신 과정에서 바뀐 쿠키(예: 만료 토큰 삭제)를 리다이렉트 응답에도 옮겨 담는다.
+    const redirect = NextResponse.redirect(loginUrl);
+    response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+    return redirect;
+  }
 
   return response;
 }
