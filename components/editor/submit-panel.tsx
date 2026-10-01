@@ -5,17 +5,19 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import type { ApiResult } from "@/lib/api/response";
 import type { Language } from "@/types/problem";
-import type { SubmissionResult } from "@/types/submission";
+import type { SubmitResponse as SubmitData } from "@/types/submission";
 
 type Props = {
   slug: string;
   language: Language;
   /** 제출 시점의 최신 코드 */
   getCode: () => string;
+  /** 제출 시점까지의 풀이 시간(초) */
+  getSolvingSeconds: () => number;
+  /** 제출이 저장된 뒤 호출 (정답이면 타이머를 초기화하는 데 사용) */
+  onSubmitted: (data: SubmitData) => void;
   isLoggedIn: boolean;
 };
-
-type SubmitData = { submissionId: string; result: SubmissionResult; attemptCount: number };
 
 type State =
   | { step: "idle" }
@@ -27,7 +29,7 @@ type State =
 /**
  * 제출 패널. 아직 자동 채점(Judge)이 없어서, 사용자가 예제로 직접 확인한 결과를 함께 기록한다. (ADR-003)
  */
-export function SubmitPanel({ slug, language, getCode, isLoggedIn }: Props) {
+export function SubmitPanel({ slug, language, getCode, getSolvingSeconds, onSubmitted, isLoggedIn }: Props) {
   const [state, setState] = useState<State>({ step: "idle" });
 
   async function submit(selfReport: "correct" | "wrong") {
@@ -36,10 +38,15 @@ export function SubmitPanel({ slug, language, getCode, isLoggedIn }: Props) {
       const res = await fetch("/api/submissions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, language, code: getCode(), selfReport }),
+        body: JSON.stringify({ slug, language, code: getCode(), selfReport, solvingTimeSec: getSolvingSeconds() }),
       });
       const body = (await res.json()) as ApiResult<SubmitData>;
-      setState(body.ok ? { step: "done", data: body.data } : { step: "error", message: body.message });
+      if (body.ok) {
+        setState({ step: "done", data: body.data });
+        onSubmitted(body.data);
+      } else {
+        setState({ step: "error", message: body.message });
+      }
     } catch {
       setState({ step: "error", message: "네트워크 문제로 제출하지 못했어요. 잠시 후 다시 시도해주세요." });
     }
@@ -80,8 +87,11 @@ export function SubmitPanel({ slug, language, getCode, isLoggedIn }: Props) {
           <div aria-live="polite" className="text-xs">
             {state.step === "done" && (
               <p className="text-muted-foreground">
-                {state.data.attemptCount}번째 제출을 저장했어요 ·{" "}
+                {state.data.newlySolved
+                  ? "처음으로 해결했어요! "
+                  : `${state.data.attemptCount}번째 제출을 저장했어요 · `}
                 {state.data.result === "self_correct" ? "맞았어요(직접 확인)" : "틀렸어요(직접 확인)"}
+                {state.data.streak !== null && ` · ${state.data.streak}일 연속 학습 중`}
               </p>
             )}
             {state.step === "error" && (
