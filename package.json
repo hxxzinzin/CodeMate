@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:start": "npx supabase start -x vector,logflare,imgproxy,edge-runtime,realtime,storage-api,supavisor",
+    "db:stop": "npx supabase stop",
+    "db:reset": "npx supabase db reset",
+    "db:test": "npx supabase test db",
+    "db:lint": "npx supabase db lint --level warning"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
