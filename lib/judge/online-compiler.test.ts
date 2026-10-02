@@ -25,6 +25,27 @@ describe("toRunOutcome", () => {
     expect(toRunOutcome("c", { exit_code: 1, error: "undefined reference to `foo'" }).kind).toBe("compile_error");
   });
 
+  it("실제 응답: 서비스가 주는 gcc 메시지 형식(파일명 없이 줄:칸)도 컴파일 에러", () => {
+    const real = {
+      output: "",
+      error: "1:21: error: expected ';' before '}' token\n    1 | int main(){ return 0 }\n",
+      status: "error",
+      exit_code: 1,
+      time: "0.0000",
+    };
+    expect(toRunOutcome("c", real).kind).toBe("compile_error");
+  });
+
+  it("실제 응답: 이유 없는 실패는 실행 에러, 서비스 내부 메시지는 보여주지 않는다", () => {
+    const opaque = { output: "", error: "Internal error: code execution failed", status: "error", exit_code: -1, time: "0" };
+    expect(toRunOutcome("java", opaque, 1900)).toEqual({ kind: "runtime_error", stdout: "", stderr: "", timeSec: 0 });
+  });
+
+  it("실제 응답: 이유 없는 실패가 30초 가까이 걸렸으면 시간 초과 (무한 루프)", () => {
+    const opaque = { output: "", error: "Internal error: code execution failed", status: "error", exit_code: -1, time: "0" };
+    expect(toRunOutcome("c", opaque, 30_600).kind).toBe("timeout");
+  });
+
   it("그 밖의 비정상 종료·시그널은 런타임 에러", () => {
     expect(toRunOutcome("java", { exit_code: 1, error: 'Exception in thread "main" java.lang.NullPointerException' }).kind).toBe(
       "runtime_error",

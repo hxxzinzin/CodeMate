@@ -44,6 +44,8 @@ export type JudgeSummary = {
   total: number;
   /** 실행한 테스트 중 가장 오래 걸린 시간(초) */
   maxTimeSec: number | null;
+  /** 실행 서비스의 입력 크기 한도 때문에 실행하지 못한 테스트 수 (주로 효율성 확인용 큰 입력) */
+  skipped?: number;
   /** 처음 틀린 테스트 (1부터 시작하는 번호) */
   failed?: {
     number: number;

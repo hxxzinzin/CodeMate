@@ -99,6 +99,16 @@ describe("judgeCases", () => {
     expect(r.summary.message).toContain("(생략)");
   });
 
+  it("실행 서비스의 입력 한도를 넘는 테스트는 실행하지 않고 건너뛴 수를 남긴다", async () => {
+    const { runner: base, calls } = fakeRunner((input) => ok(`${sum(input)}\n`));
+    const runner: CodeRunner = { run: base.run, maxInputBytes: 4 };
+    // "1 2", "2 2", "0 0", "7 8"은 3바이트, "10 5"는 4바이트 → 모두 한도 안. 큰 입력 하나를 추가
+    const big: TestCase = { input: "1 2 3", expectedOutput: "6\n", isSample: false };
+    const r = await judgeCases(runner, "c", "code", [...cases, big]);
+    expect(r).toEqual({ result: "ac", summary: { passed: 5, total: 5, maxTimeSec: 0.1, skipped: 1 } });
+    expect(calls).not.toContain("1 2 3");
+  });
+
   it("테스트케이스가 없으면 채점 불가 오류 (오답으로 기록하지 않음)", async () => {
     const { runner } = fakeRunner(() => ok(""));
     await expect(judgeCases(runner, "c", "code", [])).rejects.toBeInstanceOf(JudgeUnavailableError);

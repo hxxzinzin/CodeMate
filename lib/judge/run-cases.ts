@@ -17,6 +17,8 @@ export type RunOutcome = {
 
 export interface CodeRunner {
   run(language: Language, code: string, input: string): Promise<RunOutcome>;
+  /** 서비스가 받는 입력의 최대 크기(바이트). 넘는 테스트는 실행하지 않고 건너뛴 수로 알린다. */
+  readonly maxInputBytes?: number;
 }
 
 /** 실행 서비스 자체의 문제(한도 초과, 장애). 사용자 코드의 오답과 구분한다. */
@@ -57,14 +59,18 @@ function verdictOf(language: Language, outcome: RunOutcome, expected: string): C
  * 테스트를 순서대로 실행하고, 처음 틀린 테스트에서 멈춘다. (실제 채점 사이트와 같은 방식, 호출 수 절약)
  * - 첫 테스트를 먼저 혼자 실행한다. 컴파일 에러면 나머지를 실행할 필요가 없다.
  * - 나머지는 concurrency개씩 묶어서 동시에 실행한다.
+ * - 실행 서비스의 입력 크기 한도를 넘는 테스트(주로 효율성 확인용 큰 입력)는 건너뛰고, 건너뛴 수를 결과에 남긴다.
  */
 export async function judgeCases(
   runner: CodeRunner,
   language: Language,
   code: string,
-  cases: TestCase[],
+  allCases: TestCase[],
 ): Promise<{ result: SubmissionResult; summary: JudgeSummary }> {
-  if (cases.length === 0) throw new JudgeUnavailableError("채점할 테스트케이스가 없어요.", false);
+  const limit = runner.maxInputBytes;
+  const cases = limit === undefined ? allCases : allCases.filter((tc) => Buffer.byteLength(tc.input, "utf8") <= limit);
+  const skipped = allCases.length - cases.length;
+  if (cases.length === 0) throw new JudgeUnavailableError("채점할 수 있는 테스트케이스가 없어요.", false);
 
   const verdicts: CaseVerdict[] = [];
   const batches = [cases.slice(0, 1)];
@@ -85,7 +91,7 @@ export async function judgeCases(
   const failedIndex = verdicts.findIndex((v) => v.result !== "ac");
 
   if (failedIndex === -1) {
-    return { result: "ac", summary: { passed: cases.length, total: cases.length, maxTimeSec } };
+    return { result: "ac", summary: { passed: cases.length, total: cases.length, maxTimeSec, ...(skipped > 0 && { skipped }) } };
   }
 
   const { result, outcome } = verdicts[failedIndex];
@@ -94,6 +100,7 @@ export async function judgeCases(
     passed: failedIndex,
     total: cases.length,
     maxTimeSec,
+    ...(skipped > 0 && { skipped }),
     failed: { number: failedIndex + 1, sample: tc.isSample },
   };
   // 숨김 테스트는 입력·기대 출력을 보여주지 않는다. (보여주면 그 값만 출력하는 코드로 통과할 수 있다)
