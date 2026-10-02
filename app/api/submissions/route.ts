@@ -35,6 +35,7 @@ export async function POST(request: Request) {
       attemptCount: outcome.attemptCount,
       newlySolved: outcome.newlySolved,
       streak: outcome.streak,
+      skillChanges: outcome.skillChanges,
     };
     return ok(data, 201);
   } catch (error) {

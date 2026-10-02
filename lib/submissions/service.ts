@@ -6,10 +6,12 @@ import { getProblemBySlug } from "@/lib/db/problems";
 import { summarizeHintUsage } from "@/lib/hints/rules";
 import { getCoachUsageSince, getSubmissionStats, insertSubmission, recordLearningEvent } from "@/lib/db/submissions";
 import { getJudge } from "@/lib/judge/provider";
+import { performanceScore, type PerformanceInput } from "@/lib/learning/performance";
 import { clampSolvingTime, isNewlySolved, nextProgress } from "@/lib/learning/progress";
 import { localDate, nextStreak } from "@/lib/learning/streak";
+import { applySubmissionToSkills } from "@/lib/skills/service";
 import type { SubmissionRequest } from "@/lib/submissions/schema";
-import type { SubmitResponse } from "@/types/submission";
+import type { SkillChange, SubmitResponse } from "@/types/submission";
 
 /** 같은 문제를 연속으로 제출할 수 있는 최소 간격 (실수로 여러 번 누르는 것 방지, 무료 DB 한도 보호) */
 export const MIN_SUBMIT_INTERVAL_MS = 5_000;
@@ -56,6 +58,19 @@ export async function submitSolution(userId: string, req: SubmissionRequest, now
     getCoachUsageSince(userId, problem.id, stats.lastSubmittedAt),
   ]);
   const hintUsage = summarizeHintUsage(hintEvents.map((e) => e.level));
+  const solvingTimeSec = clampSolvingTime(req.solvingTimeSec, problem.estimatedMinutes);
+  // Skill 점수와 난이도 조정이 같은 기준을 쓰도록 수행 점수 입력을 한 번만 만든다.
+  const performanceInput: PerformanceInput = {
+    result,
+    solvingTimeSec,
+    estimatedMinutes: problem.estimatedMinutes,
+    hintCount: hintUsage.hintCount,
+    maxHintLevel: hintUsage.maxHintLevel,
+    attemptCount,
+    aiReviewUsed: coachUsage.aiReviewUsed,
+    solutionRevealed: coachUsage.solutionRevealed,
+  };
+
   const saved = await insertSubmission({
     userId,
     problemId: problem.id,
@@ -63,7 +78,7 @@ export async function submitSolution(userId: string, req: SubmissionRequest, now
     code: req.code,
     result,
     attemptCount,
-    solvingTimeSec: clampSolvingTime(req.solvingTimeSec, problem.estimatedMinutes),
+    solvingTimeSec,
     hintCount: hintUsage.hintCount,
     maxHintLevel: hintUsage.maxHintLevel,
     aiReviewUsed: coachUsage.aiReviewUsed,
@@ -75,6 +90,8 @@ export async function submitSolution(userId: string, req: SubmissionRequest, now
     submissionId: saved.id,
     language: req.language,
     result,
+    difficulty: problem.difficulty,
+    performance: performanceScore(performanceInput),
   });
 
   // 진도·streak는 제출 기록이 저장된 뒤 갱신한다.
@@ -98,5 +115,20 @@ export async function submitSolution(userId: string, req: SubmissionRequest, now
     console.error("[submissions] learning state update failed", error);
   }
 
-  return { ok: true, submissionId: saved.id, result, attemptCount, newlySolved, streak };
+  // Skill 갱신도 별도로 처리한다. 실패해도 제출·진도·streak는 유지된다.
+  let skillChanges: SkillChange[] = [];
+  try {
+    ({ changes: skillChanges } = await applySubmissionToSkills({
+      userId,
+      tags: problem.tags,
+      language: req.language,
+      difficulty: problem.difficulty,
+      performanceInput,
+      now,
+    }));
+  } catch (error) {
+    console.error("[submissions] skill update failed", error);
+  }
+
+  return { ok: true, submissionId: saved.id, result, attemptCount, newlySolved, streak, skillChanges };
 }
