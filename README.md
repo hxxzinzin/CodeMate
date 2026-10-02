@@ -159,7 +159,6 @@ Preview도 같은 Supabase 프로젝트(운영 DB)를 사용합니다.
 
 - [docs/decisions.md](docs/decisions.md): 기술적 의사결정 기록 (ADR)
 - [docs/ai-development-log.md](docs/ai-development-log.md): AI 활용 개발 로그
-- [docs/study-guide.md](docs/study-guide.md): 이 프로젝트로 공부하는 비법서 (개념, 코드 위치, 면접 질문, 실제로 겪은 에러 70개)
 
 ## AI-assisted development
 
