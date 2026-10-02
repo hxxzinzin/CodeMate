@@ -1,4 +1,5 @@
 import type { Language } from "./problem";
+import type { SkillCategory } from "./skill";
 
 /**
  * self_*: Judge 도입 전 사용자가 직접 확인한 결과 (ADR-003)
@@ -26,8 +27,18 @@ export type Submission = {
   createdAt: string;
 };
 
+/** 제출로 바뀐 Skill 점수 (before가 null이면 처음 측정) */
+export type SkillChange = {
+  category: SkillCategory;
+  skill: string;
+  before: number | null;
+  after: number;
+};
+
 /** POST /api/submissions 성공 응답 (서버·클라이언트 공용) */
 export type SubmitResponse = {
+  /** 이번 제출로 갱신된 Skill. 갱신에 실패하면 빈 배열 */
+  skillChanges: SkillChange[];
   submissionId: string;
   result: SubmissionResult;
   attemptCount: number;
