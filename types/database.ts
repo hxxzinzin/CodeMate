@@ -68,6 +68,7 @@ export type Database = {
           language: string;
           mode: string;
           problem_id: string;
+          reason: string | null;
           reroll_count: number;
           updated_at: string;
           user_id: string;
@@ -79,6 +80,7 @@ export type Database = {
           language: string;
           mode?: string;
           problem_id: string;
+          reason?: string | null;
           reroll_count?: number;
           updated_at?: string;
           user_id: string;
@@ -90,6 +92,7 @@ export type Database = {
           language?: string;
           mode?: string;
           problem_id?: string;
+          reason?: string | null;
           reroll_count?: number;
           updated_at?: string;
           user_id?: string;
