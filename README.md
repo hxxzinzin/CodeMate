@@ -91,8 +91,22 @@ content/problems/valid-brackets/
 npm run content:verify        # 형식 검사 + 정답 코드를 예제·숨김 테스트로 실행 (Java: 로컬 JDK, C: Docker)
 npm run content:seed          # supabase/seed.sql 생성 (직접 수정하지 않음)
 npm run db:reset              # 로컬 DB에 migration + seed 적용
-npx supabase db push --include-seed   # 클라우드에 seed 적용
+npm run content:sync          # 클라우드에 반영할 내용 미리보기 (변경 없음)
+npm run content:sync -- --yes # 클라우드에 문제·태그·힌트·해설·테스트케이스 반영
 ```
+
+> `npx supabase db push --include-seed`는 이미 적용한 seed가 바뀌어도 다시 실행하지 않습니다(해시만 갱신). 문제를 추가·수정한 뒤에는 `content:sync`를 사용하세요.
+
+### AI로 문제 늘리기 ([ADR-015](docs/decisions.md#adr-015-ai-문제-초안은-sandbox-교차-검증과-사람-승인을-거쳐-공개한다))
+
+```bash
+npm run content:generate -- --tag bfs --difficulty 3   # 초안 생성 + sandbox 교차 검증 (GEMINI_API_KEY, ONLINECOMPILER_API_KEY 필요)
+# content/drafts/<slug>/preview.md 를 읽고 검토 (Git에 올라가지 않는 폴더)
+npm run content:approve -- <slug>                      # 승인: 정식 문제로 이동 + 검증 + seed
+```
+
+- AI는 테스트 **입력**만 씁니다. 기대 출력은 Java·C·완전 탐색 풀이를 sandbox에서 실행해 **세 풀이가 모두 같은 답**일 때 그 값을 씁니다.
+- AI가 만든 코드는 로컬에서 실행하지 않습니다. 사람이 승인한 뒤에만 기존 검증을 한 번 더 돌립니다.
 
 - 태그는 `content/tags.ts`에 등록된 것만 쓸 수 있습니다. (화면 표시 이름도 이 파일을 사용)
 - 문제 id는 slug에서 결정적으로 만들어지므로 seed를 여러 번 적용해도 중복되지 않습니다.

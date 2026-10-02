@@ -6,21 +6,11 @@
  * - 태그·힌트는 지우고 다시 넣고, 문제·해설은 upsert한다.
  * - 채점 테스트케이스 = 예제(is_sample) + 숨김 테스트. 지우고 다시 넣는다.
  */
-import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import path from "node:path";
-import { loadProblems, validate } from "./load.ts";
+import { loadProblems, problemId, validate } from "./load.ts";
 
 const OUTPUT = path.resolve(import.meta.dirname, "../../supabase/seed.sql");
-
-/** slug → UUID (SHA-1 기반, RFC 4122 v5 형식) */
-function problemId(slug: string): string {
-  const h = createHash("sha1").update(`codemate:problem:${slug}`).digest();
-  h[6] = (h[6] & 0x0f) | 0x50;
-  h[8] = (h[8] & 0x3f) | 0x80;
-  const hex = h.subarray(0, 16).toString("hex");
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
-}
 
 /** SQL 문자열 리터럴. standard_conforming_strings가 켜져 있으므로 작은따옴표만 이스케이프하면 된다. */
 const lit = (value: string) => `'${value.replace(/'/g, "''")}'`;
