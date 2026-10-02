@@ -18,7 +18,8 @@
     "content:seed": "node scripts/content/build-seed.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "ai:smoke": "node --conditions=react-server scripts/ai/smoke.ts"
+    "ai:smoke": "node --conditions=react-server scripts/ai/smoke.ts",
+    "judge:smoke": "node scripts/judge/smoke.ts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
