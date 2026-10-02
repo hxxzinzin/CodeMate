@@ -1,26 +1,13 @@
 import type { Metadata } from "next";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { TodayProblemCard } from "@/components/dashboard/today-problem-card";
 import { PageHeader } from "@/components/layout/page-header";
-import { ProblemMeta } from "@/components/problems/problem-meta";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getCurrentUser } from "@/lib/auth";
 import { LANGUAGE_LABELS, tagLabel } from "@/lib/labels";
-import {
-  mockProblems,
-  mockRecentSubmissions,
-  mockStats,
-  mockStrengths,
-  mockTodayProblemId,
-  mockWeaknesses,
-} from "@/lib/mock-data";
+import { mockProblems, mockRecentSubmissions, mockStats, mockStrengths, mockWeaknesses } from "@/lib/mock-data";
+import { type DailyProblemView, getTodayProblem } from "@/lib/recommendation/daily";
 import type { SubmissionResult } from "@/types/submission";
 
 export const metadata: Metadata = { title: "대시보드 | CodeMate" };
@@ -42,31 +29,25 @@ const dateFormat = new Intl.DateTimeFormat("ko-KR", {
   timeZone: "Asia/Seoul",
 });
 
-export default function DashboardPage() {
-  const today = mockProblems.find((p) => p.id === mockTodayProblemId);
+export default async function DashboardPage() {
   const stats = mockStats;
+  // 대시보드는 proxy가 로그인 사용자만 들여보낸다. (그래도 세션이 없으면 오늘의 문제는 비워 둔다)
+  const user = await getCurrentUser();
+  let daily: DailyProblemView | null = null;
+  if (user) {
+    try {
+      daily = await getTodayProblem(user.id);
+    } catch (error) {
+      console.error("[dashboard] today problem failed", error);
+    }
+  }
 
   return (
     <>
       <PageHeader title="대시보드" description="오늘도 한 문제, 스스로 생각하는 시간을 가져보세요." />
 
       <div className="flex flex-col gap-6">
-        {today && (
-          <Card>
-            <CardHeader>
-              <CardDescription>오늘의 문제</CardDescription>
-              <CardTitle className="text-xl">{today.title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ProblemMeta {...today} />
-            </CardContent>
-            <CardFooter className="justify-between gap-4">
-              <p className="text-xs text-muted-foreground">먼저 10분 정도 직접 고민해보세요.</p>
-              {/* 문제 상세 화면은 #11에서 구현한다. */}
-              <Button disabled>문제 풀기</Button>
-            </CardFooter>
-          </Card>
-        )}
+        <TodayProblemCard daily={daily} />
 
         <section aria-labelledby="stats-heading">
           <h2 id="stats-heading" className="sr-only">
