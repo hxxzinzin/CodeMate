@@ -158,7 +158,8 @@ Preview도 같은 Supabase 프로젝트(운영 DB)를 사용합니다.
 | 서비스 | 주의할 점 | 공식 문서 |
 |---|---|---|
 | Vercel Hobby | 개인·비상업용. 함수 실행 시간, 빌드 횟수 제한 | https://vercel.com/docs/plans/hobby |
-| Supabase Free | 활성 프로젝트 2개, DB 용량 제한. 일정 기간 활동이 없으면 프로젝트가 일시정지됨 (대시보드에서 Restore) | https://supabase.com/pricing |
+| Supabase Free | 활성 프로젝트 2개, DB 용량 제한. 7일 동안 활동이 없으면 프로젝트가 일시정지됨 (대시보드에서 Restore) → `vercel.json`의 Cron이 매일 03:00(KST) `/api/health`로 DB를 조회해 막음 | https://supabase.com/pricing |
+| OnlineCompiler.io Free | 월 100만 회, 입력 100KB, 실행 30초 ([ADR-014](docs/decisions.md#adr-014-자동-채점은-onlinecompilerio로-하고-한계는-숨기지-않고-표시한다)) | https://onlinecompiler.io/pricing |
 | Gemini API Free tier | 모델별 분당·일일 요청 한도. 무료 등급 데이터는 서비스 개선에 사용될 수 있음 | https://ai.google.dev/gemini-api/docs/rate-limits |
 
 ## AI 코치 (Gemini)
