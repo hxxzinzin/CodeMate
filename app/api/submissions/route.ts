@@ -3,6 +3,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { firstIssueMessage, submissionRequestSchema } from "@/lib/submissions/schema";
 import { submitSolution, type SubmitData } from "@/lib/submissions/service";
 
+// 자동 채점은 테스트마다 외부 실행 서비스를 호출해서 수 초~수십 초 걸릴 수 있다.
+export const maxDuration = 60;
+
 /** 코드 제출. 로그인 사용자만 기록을 저장할 수 있다. */
 export async function POST(request: Request) {
   if (!isSameOrigin(request)) {
@@ -37,6 +40,7 @@ export async function POST(request: Request) {
       streak: outcome.streak,
       skillChanges: outcome.skillChanges,
       difficultyChange: outcome.difficultyChange,
+      judge: outcome.judge,
     };
     return ok(data, 201);
   } catch (error) {

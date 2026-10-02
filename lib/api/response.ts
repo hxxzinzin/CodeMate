@@ -18,7 +18,7 @@ export type ApiErrorCode =
   | "UNSUPPORTED_LANGUAGE"
   | "TOO_MANY_REQUESTS"
   | "INTERNAL"
-  /** 외부 서비스(AI)가 응답하지 않거나 설정되지 않음 */
+  /** 외부 서비스(AI, 채점 서버)가 응답하지 않거나 설정되지 않음 */
   | "SERVICE_UNAVAILABLE"
   /** 외부 서비스(AI)가 처리하지 못함 */
   | "UPSTREAM_ERROR";

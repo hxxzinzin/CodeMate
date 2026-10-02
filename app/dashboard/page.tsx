@@ -22,7 +22,7 @@ const RESULT_LABELS: Record<SubmissionResult, string> = {
   ac: "정답",
   wa: "오답",
   tle: "시간 초과",
-  re: "런타임 에러",
+  re: "실행 에러",
   ce: "컴파일 에러",
 };
 

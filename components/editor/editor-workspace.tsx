@@ -38,6 +38,8 @@ type Props = {
   slug: string;
   languages: Language[];
   isLoggedIn: boolean;
+  /** 자동 채점 사용 여부 (서버 설정) */
+  autoJudge: boolean;
   /** 이전에 연 정적 힌트의 최고 단계 (로그인 사용자, 없으면 0) */
   initialViewedHintLevel: number;
 };
@@ -48,7 +50,7 @@ type Props = {
  * 그래서 첫 state를 만들 때 바로 localStorage를 읽을 수 있고,
  * "템플릿이 먼저 저장되어 기존 코드를 덮어쓰는" 순서 문제가 생기지 않는다.
  */
-export default function EditorWorkspace({ slug, languages, isLoggedIn, initialViewedHintLevel }: Props) {
+export default function EditorWorkspace({ slug, languages, isLoggedIn, autoJudge, initialViewedHintLevel }: Props) {
   const [store] = useState(browserStore);
   const [language, setLanguage] = useState<Language>(
     () => loadLastLanguage(store, slug, languages) ?? defaultLanguage(languages),
@@ -187,6 +189,7 @@ export default function EditorWorkspace({ slug, languages, isLoggedIn, initialVi
           if (data.result === "self_correct" || data.result === "ac") solvingTimer.reset();
         }}
         isLoggedIn={isLoggedIn}
+        autoJudge={autoJudge}
       />
 
       <HintPanel

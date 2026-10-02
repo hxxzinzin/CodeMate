@@ -7,6 +7,7 @@ import { CodeWorkspace } from "@/components/editor/code-workspace";
 import { ProblemStatement } from "@/components/problems/problem-statement";
 import { getCurrentUser } from "@/lib/auth";
 import { getProblemBySlug } from "@/lib/db/problems";
+import { isAutoJudgeEnabled } from "@/lib/judge/provider";
 import { getViewedStaticLevel } from "@/lib/hints/service";
 
 export async function generateMetadata({ params }: PageProps<"/problems/[slug]">): Promise<Metadata> {
@@ -43,6 +44,7 @@ export default async function ProblemPage({ params }: PageProps<"/problems/[slug
             slug={problem.slug}
             languages={problem.languages}
             isLoggedIn={Boolean(user)}
+            autoJudge={isAutoJudgeEnabled()}
             initialViewedHintLevel={viewedHintLevel}
           />
         </section>

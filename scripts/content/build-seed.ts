@@ -4,7 +4,7 @@
  *
  * - 문제 id는 slug로부터 결정적으로 만든 UUID다. 같은 문제를 여러 번 seed해도 행이 늘어나지 않는다. (멱등)
  * - 태그·힌트는 지우고 다시 넣고, 문제·해설은 upsert한다.
- * - tests(숨김 테스트)는 아직 테이블이 없으므로 저장소에만 둔다. (Phase 10 Judge에서 사용)
+ * - 채점 테스트케이스 = 예제(is_sample) + 숨김 테스트. 지우고 다시 넣는다.
  */
 import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
@@ -61,6 +61,12 @@ ${p.hints.map((h, i) => `  (${id}, ${i + 1}, ${lit(h)})`).join(",\n")};
 insert into public.problem_solutions (problem_id, explanation, reference_code)
 values (${id}, ${lit(p.solution)}, ${jsonb(code)})
 on conflict (problem_id) do update set explanation = excluded.explanation, reference_code = excluded.reference_code;
+
+delete from public.problem_test_cases where problem_id = ${id};
+insert into public.problem_test_cases (problem_id, ord, input, expected_output, is_sample) values
+${[...p.examples.map((t) => ({ ...t, sample: true })), ...p.tests.map((t) => ({ ...t, sample: false }))]
+  .map((t, i) => `  (${id}, ${i}, ${lit(t.input)}, ${lit(t.output)}, ${t.sample})`)
+  .join(",\n")};
 `);
 }
 

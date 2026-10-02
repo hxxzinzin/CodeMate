@@ -19,7 +19,7 @@ AI는 정답을 대신 알려주지 않습니다. 개념 → 사고 방향 → �
 - 학습 대시보드와 학습 현황 차트 (연속 학습일, 정답률, 최근 30일 성장)
 - 설정: Java/C 출제 비율
 
-> 채점은 현재 **자기 보고 방식**입니다. 예제로 직접 확인한 뒤 "맞았어요/틀렸어요"를 선택합니다. 외부 채점기(Judge) 연동은 MVP 이후 작업입니다. ([ADR-003](docs/decisions.md#adr-003-mvp는-자기-보고-채점--judgeprovider-추상화))
+> 채점: `ONLINECOMPILER_API_KEY`를 설정하면 외부 sandbox에서 예제 + 숨김 테스트로 **자동 채점**하고, 설정하지 않으면 예제로 직접 확인한 뒤 "맞았어요/틀렸어요"를 고르는 **자기 보고 방식**으로 동작합니다. 사용자 코드는 우리 서버에서 실행하지 않습니다. ([ADR-003](docs/decisions.md#adr-003-mvp는-자기-보고-채점--judgeprovider-추상화), [ADR-014](docs/decisions.md#adr-014-자동-채점은-onlinecompilerio로-하고-한계는-숨기지-않고-표시한다))
 
 ## 기술 스택
 
@@ -154,6 +154,14 @@ Preview도 같은 Supabase 프로젝트(운영 DB)를 사용합니다.
 
 - 호출은 서버(`lib/ai/gemini.ts`)에서만 합니다. 기본 모델이 한도 초과·과부하면 예비 모델로 한 번 더 시도합니다.
 - 모델 선택 근거와 비교 결과는 [ADR-010](docs/decisions.md#adr-010-gemini-모델-선택과-예비-모델)에 있습니다.
+
+## 자동 채점 (OnlineCompiler.io)
+
+1. [OnlineCompiler.io](https://onlinecompiler.io)에서 무료 API 키를 발급받아 `ONLINECOMPILER_API_KEY`에 넣습니다. (서버 전용, 카드 등록 없음, 콜백 URL·IP 제한은 비워 둠)
+2. `npm run judge:smoke`로 실제 응답 형태와 채점 결과를 확인합니다. (키는 출력하지 않음)
+
+- 테스트케이스는 `problem_test_cases`에 있고 서버만 읽습니다. 숨김 테스트의 입력은 결과에 보여주지 않습니다.
+- 서비스 한계(입력 100KB, Java 에러 메시지 없음 등)와 대응은 [ADR-014](docs/decisions.md#adr-014-자동-채점은-onlinecompilerio로-하고-한계는-숨기지-않고-표시한다)에 있습니다.
 
 ## 문서
 

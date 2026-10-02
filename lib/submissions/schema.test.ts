@@ -29,8 +29,9 @@ describe("submissionRequestSchema", () => {
     expect(errorOf({ ...valid, language: "python" })).toBe("지원하지 않는 언어예요.");
   });
 
-  it("자기 보고 결과가 없거나 잘못되면 거부한다", () => {
-    expect(errorOf({ ...valid, selfReport: undefined })).toBe("결과(맞았어요/틀렸어요)를 선택해주세요.");
+  it("자기 보고 결과는 생략할 수 있지만(자동 채점), 보낸다면 올바른 값이어야 한다", () => {
+    // 자동 채점이 꺼져 있을 때 생략하면 서비스 계층이 거부한다. (lib/submissions/service.ts)
+    expect(submissionRequestSchema.safeParse({ ...valid, selfReport: undefined }).success).toBe(true);
     expect(errorOf({ ...valid, selfReport: "ac" })).toBe("결과(맞았어요/틀렸어요)를 선택해주세요.");
   });
 
