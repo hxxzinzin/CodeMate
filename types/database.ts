@@ -237,6 +237,44 @@ export type Database = {
           },
         ];
       };
+      problem_test_cases: {
+        Row: {
+          created_at: string;
+          expected_output: string;
+          id: string;
+          input: string;
+          is_sample: boolean;
+          ord: number;
+          problem_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          expected_output: string;
+          id?: string;
+          input: string;
+          is_sample?: boolean;
+          ord: number;
+          problem_id: string;
+        };
+        Update: {
+          created_at?: string;
+          expected_output?: string;
+          id?: string;
+          input?: string;
+          is_sample?: boolean;
+          ord?: number;
+          problem_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "problem_test_cases_problem_id_fkey";
+            columns: ["problem_id"];
+            isOneToOne: false;
+            referencedRelation: "problems";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       problems: {
         Row: {
           constraints: string;
