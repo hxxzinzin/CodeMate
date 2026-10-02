@@ -12,7 +12,9 @@ import { getHintEvents } from "@/lib/db/hints";
 import { getProblemBySlug } from "@/lib/db/problems";
 import { summarizeHintUsage } from "@/lib/hints/rules";
 import { getCoachUsageSince, getSubmissionStats, insertSubmission, recordLearningEvent } from "@/lib/db/submissions";
-import { getJudge } from "@/lib/judge/provider";
+import { getJudge, selfReportJudge } from "@/lib/judge/provider";
+import { JudgeUnavailableError } from "@/lib/judge/run-cases";
+import type { JudgeResult } from "@/lib/judge/types";
 import { performanceScore, type PerformanceInput } from "@/lib/learning/performance";
 import { clampSolvingTime, isNewlySolved, nextProgress } from "@/lib/learning/progress";
 import { localDate, nextStreak } from "@/lib/learning/streak";
@@ -32,10 +34,10 @@ export type SubmitOutcome = ({ ok: true } & SubmitData) | { ok: false; code: Api
  * 제출 처리 순서
  * 1. 문제 확인 (공개 문제인지, 지원 언어인지) — 클라이언트가 보낸 값을 믿지 않고 DB로 다시 확인
  * 2. 연속 제출 제한
- * 3. 채점 (MVP: 자기 보고)
+ * 3. 채점 (자동 채점 또는 자기 보고). 채점 서버 문제면 저장하지 않고 안내
  * 4. 제출 저장 + 학습 이력 기록
  * 5. 문제 진도, 연속 학습일 갱신
- * Skill 갱신은 Phase 7에서 이 흐름에 추가한다.
+ * 6. Skill, 추천 난이도 (컴파일 에러는 제외)
  */
 export async function submitSolution(userId: string, req: SubmissionRequest, now = new Date()): Promise<SubmitOutcome> {
   const problem = await getProblemBySlug(req.slug);
@@ -51,13 +53,29 @@ export async function submitSolution(userId: string, req: SubmissionRequest, now
     return { ok: false, code: "TOO_MANY_REQUESTS", message: "조금 전에 제출했어요. 잠시 후 다시 시도해주세요." };
   }
 
-  const judge = getJudge();
-  const { result, detail } = await judge.judge({
-    problemId: problem.id,
-    language: req.language,
-    code: req.code,
-    selfReport: req.selfReport,
-  });
+  // 사용자가 직접 확인한 결과를 보냈으면 자기 보고로 기록한다. (자동 채점이 없거나 쓸 수 없을 때)
+  const judge = req.selfReport ? selfReportJudge : getJudge();
+  if (judge === selfReportJudge && !req.selfReport) {
+    return { ok: false, code: "INVALID_INPUT", message: "결과(맞았어요/틀렸어요)를 선택해주세요." };
+  }
+  let judged: JudgeResult;
+  try {
+    judged = await judge.judge({ problemId: problem.id, language: req.language, code: req.code, selfReport: req.selfReport });
+  } catch (error) {
+    // 채점 서버 문제는 사용자의 오답이 아니므로 제출을 저장하지 않는다.
+    if (error instanceof JudgeUnavailableError) {
+      console.error("[submissions] judge unavailable", error.message);
+      return {
+        ok: false,
+        code: "SERVICE_UNAVAILABLE",
+        message: `${error.message} 잠시 후 다시 채점하거나, 예제로 직접 확인한 결과로 제출할 수 있어요.`,
+      };
+    }
+    throw error;
+  }
+  const { result, summary } = judged;
+  // 컴파일 에러는 문법 실수라 알고리즘 실력의 근거가 아니다. Skill·난이도에는 반영하지 않는다.
+  const measurable = result !== "ce";
 
   const attemptCount = stats.count + 1;
   // 직전 제출 이후 본 힌트만 이번 시도에 포함한다. (난이도 조정에 사용)
@@ -91,7 +109,7 @@ export async function submitSolution(userId: string, req: SubmissionRequest, now
     maxHintLevel: hintUsage.maxHintLevel,
     aiReviewUsed: coachUsage.aiReviewUsed,
     solutionRevealed: coachUsage.solutionRevealed,
-    judgeDetail: detail ? { judge: judge.name, ...detail } : { judge: judge.name },
+    judgeDetail: summary ? { judge: judge.name, ...summary } : { judge: judge.name },
   });
 
   // 진도·streak는 제출 기록이 저장된 뒤 갱신한다.
@@ -117,22 +135,24 @@ export async function submitSolution(userId: string, req: SubmissionRequest, now
 
   // Skill 갱신도 별도로 처리한다. 실패해도 제출·진도·streak는 유지된다.
   let skillChanges: SkillChange[] = [];
-  try {
-    ({ changes: skillChanges } = await applySubmissionToSkills({
-      userId,
-      tags: problem.tags,
-      language: req.language,
-      difficulty: problem.difficulty,
-      performanceInput,
-      now,
-    }));
-  } catch (error) {
-    console.error("[submissions] skill update failed", error);
+  if (measurable) {
+    try {
+      ({ changes: skillChanges } = await applySubmissionToSkills({
+        userId,
+        tags: problem.tags,
+        language: req.language,
+        difficulty: problem.difficulty,
+        performanceInput,
+        now,
+      }));
+    } catch (error) {
+      console.error("[submissions] skill update failed", error);
+    }
   }
 
   // 추천 난이도: 그 문제의 첫 제출이거나 처음 해결했을 때만 조정한다. (재시도·복습으로 흔들리지 않게)
   let difficultyChange: SubmitResponse["difficultyChange"] = null;
-  if (shouldAdjustDifficulty(attemptCount, newlySolved)) {
+  if (measurable && shouldAdjustDifficulty(attemptCount, newlySolved)) {
     try {
       const before = await getCurrentDifficulty(userId);
       const after = nextDifficulty(before, problem.difficulty, performanceScore(performanceInput));
@@ -154,5 +174,15 @@ export async function submitSolution(userId: string, req: SubmissionRequest, now
     difficultyChange,
   });
 
-  return { ok: true, submissionId: saved.id, result, attemptCount, newlySolved, streak, skillChanges, difficultyChange };
+  return {
+    ok: true,
+    submissionId: saved.id,
+    result,
+    attemptCount,
+    newlySolved,
+    streak,
+    skillChanges,
+    difficultyChange,
+    judge: summary,
+  };
 }

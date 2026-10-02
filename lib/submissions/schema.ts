@@ -10,8 +10,11 @@ export const submissionRequestSchema = z.object({
     .string({ error: "제출할 코드가 올바르지 않아요." })
     .max(MAX_DRAFT_LENGTH, `코드는 ${MAX_DRAFT_LENGTH.toLocaleString()}자 이하로 제출해주세요.`)
     .refine((code) => code.trim().length > 0, "빈 코드는 제출할 수 없어요."),
-  /** Judge 도입 전에는 사용자가 예제로 직접 확인한 결과를 받는다. (ADR-003) */
-  selfReport: z.enum(["correct", "wrong"], { error: "결과(맞았어요/틀렸어요)를 선택해주세요." }),
+  /**
+   * 사용자가 예제로 직접 확인한 결과. (ADR-003)
+   * 자동 채점이 켜져 있으면 보내지 않는다. 자동 채점을 쓸 수 없을 때만 대신 쓴다.
+   */
+  selfReport: z.enum(["correct", "wrong"], { error: "결과(맞았어요/틀렸어요)를 선택해주세요." }).optional(),
   /** 브라우저가 측정한 풀이 시간(초). 서버가 다시 상한을 적용하므로 형식만 확인한다. */
   solvingTimeSec: z
     .number({ error: "풀이 시간 형식이 올바르지 않아요." })
