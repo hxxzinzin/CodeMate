@@ -7,31 +7,84 @@ CodeMate는 사용자의 풀이 기록(정답률, 풀이 시간, 힌트 사용�
 
 AI는 정답을 대신 알려주지 않습니다. 개념 → 사고 방향 → 접근 방법 → 의사코드 순서로 단계적인 힌트를 주는 **코치** 역할을 합니다.
 
-> 🚧 현재 개발 중입니다. 진행 상황은 [Milestones](https://github.com/hxxzinzin/CodeMate/milestones)에서 확인할 수 있습니다.
+**🌐 서비스 주소: https://code-mate-gold.vercel.app** (문제 목록은 로그인 없이 체험 가능, Google 로그인)
+
+## 현재 상태
+
+계획한 기능(Phase 1~10)을 모두 구현해 배포했고, 실제로 사용하며 개선하고 있습니다. 모든 인프라는 **결제 정보 없이 무료 플랜**으로 운영합니다. ([ADR-001](docs/decisions.md#adr-001-무료-플랜-기반-인프라))
+
+| 항목 | 현재 |
+|---|---|
+| 문제 | 31개 (Java·C, 난이도 1~5, 예제 + 숨김 테스트 267개) |
+| 테스트 | 단위 테스트 229개 (Vitest), DB 테스트 47개 (pgTAP) |
+| 설계 결정 기록 | ADR 15개 ([docs/decisions.md](docs/decisions.md)) |
+| 진행 기록 | 이슈 → 브랜치 → PR → merge ([Milestones](https://github.com/hxxzinzin/CodeMate/milestones)) |
 
 ## 주요 기능
 
-- 오늘의 문제: 약점·최근 오답·복습 시기·난이도·언어 비율을 고려한 규칙 기반 추천, 하루 2회 새로 뽑기, 추천 이유 표시
-- Adaptive Difficulty: 풀이 결과(정답, 시간, 힌트, 시도)에 따라 추천 난이도를 소수 단위로 조정
-- Skill System: 알고리즘 / 자료구조 / Java / C 분야별 점수, 강점·취약점·복습 추천
-- Monaco Editor 기반 Java/C 코드 작성 (자동 저장, 풀이 시간 측정)
-- Gemini 기반 단계별 힌트, 코드 리뷰, 질문 (정답 코드는 요청할 때만, 하루 사용 한도)
-- 학습 대시보드와 학습 현황 차트 (연속 학습일, 정답률, 최근 30일 성장)
-- 설정: Java/C 출제 비율
+**학습 흐름**
+- **오늘의 문제:** 약점·최근 오답·복습 시기·난이도·언어 비율로 하루 한 문제를 추천하고, 추천 이유를 보여줍니다. 하루 2번까지 새로 뽑을 수 있습니다.
+- **적응형 난이도:** 풀이 결과(정답, 시간, 힌트, 시도 횟수)에 따라 추천 난이도를 소수 단위로 조정합니다. 정답률 약 70%인 "약간 어려운" 구간을 유지합니다.
+- **분야별 실력 점수:** 알고리즘 / 자료구조 / Java / C 분야별 점수와 강점·취약점·복습 추천
+- **복습과 다시 풀기:** 푼 문제는 7일 → 14일 간격으로 복습, 정답을 보고 넘어간 문제는 3일 뒤 "다시 풀기"로 다시 나옵니다.
 
-> 채점: `ONLINECOMPILER_API_KEY`를 설정하면 외부 sandbox에서 예제 + 숨김 테스트로 **자동 채점**하고, 설정하지 않으면 예제로 직접 확인한 뒤 "맞았어요/틀렸어요"를 고르는 **자기 보고 방식**으로 동작합니다. 사용자 코드는 우리 서버에서 실행하지 않습니다. ([ADR-003](docs/decisions.md#adr-003-mvp는-자기-보고-채점--judgeprovider-추상화), [ADR-014](docs/decisions.md#adr-014-자동-채점은-onlinecompilerio로-하고-한계는-숨기지-않고-표시한다))
+**문제 풀이**
+- **코드 에디터:** Monaco 기반 Java/C 에디터, 자동 저장, 화면을 보는 동안만 재는 풀이 시간
+- **자동 채점:** 외부 sandbox에서 예제 + 숨김 테스트로 채점 (정답 / 오답 / 시간 초과 / 실행 에러 / 컴파일 에러). 사용자 코드는 우리 서버에서 실행하지 않습니다.
+- **단계별 힌트와 AI 코치:** 검증된 힌트 4단계 → Gemini가 내 코드에 맞춘 힌트·코드 리뷰·질문 답변. 정답 코드는 사용자가 확인한 뒤에만 보여주고, 하루 사용 한도가 있습니다.
+
+**기록과 콘텐츠**
+- **대시보드·학습 현황:** 연속 학습일, 정답률, 평균 풀이 시간, 추천 난이도 변화 그래프, 최근 30일 분야별 성장
+- **문제 늘리기:** AI가 초안을 만들면 세 가지 풀이(Java, C, 완전 탐색)를 sandbox에서 실행해 모두 같은 답일 때만 통과하고, 사람이 승인해야 공개됩니다. ([ADR-015](docs/decisions.md#adr-015-ai-문제-초안은-sandbox-교차-검증과-사람-승인을-거쳐-공개한다))
+
+## 어떻게 동작하나요
+
+```
+브라우저 (Next.js 화면, Monaco 에디터)
+   │
+   ▼
+Vercel ─ Next.js 서버 (API Route → 서비스 계층 → DB 접근 계층)
+   │            │                     │                    │
+   │            ▼                     ▼                    ▼
+   │     Supabase (PostgreSQL,   Gemini API           OnlineCompiler.io
+   │     Google 로그인, RLS)     (힌트·리뷰, 서버만)   (채점 sandbox, 서버만)
+   │
+   └─ 매일 03:00 Cron → /api/health (DB 일시정지 방지)
+```
+
+- **보안:** 다른 사용자의 데이터는 DB의 RLS(행 단위 보안)로 막고, pgTAP 테스트로 확인합니다. AI·채점·DB 관리자 키는 서버에서만 씁니다.
+- **추천·점수·난이도 계산**은 DB와 화면에서 분리한 순수 함수(`lib/recommendation`, `lib/skills`, `lib/learning`)라 단위 테스트로 동작을 증명합니다.
 
 ## 기술 스택
 
 | 영역 | 기술 |
 |---|---|
-| Frontend / API | Next.js (App Router), React, TypeScript (strict) |
-| Styling | Tailwind CSS |
-| Database / Auth | Supabase (PostgreSQL, RLS, Google OAuth) |
+| 화면 / API | Next.js 16 (App Router), React 19, TypeScript (strict) |
+| 스타일 | Tailwind CSS v4, shadcn/ui |
+| DB / 로그인 | Supabase (PostgreSQL, RLS, Google OAuth) |
 | AI | Google Gemini API (서버 전용) |
-| Deploy | Vercel |
+| 채점 | OnlineCompiler.io (외부 sandbox) |
+| 에디터 | Monaco Editor |
+| 테스트 | Vitest, pgTAP |
+| 배포 | Vercel (Cron 포함) |
 
-모든 인프라는 무료 플랜 기준으로 설계했습니다. 이유는 [ADR-001](docs/decisions.md#adr-001-무료-플랜-기반-인프라)을 참고하세요.
+## 폴더 구조
+
+```
+app/            화면(page)과 API(app/api)
+components/     화면 컴포넌트 (editor, dashboard, progress, ui ...)
+lib/            서버·공용 로직
+  recommendation/  오늘의 문제 추천, 적응형 난이도
+  skills/          분야별 실력 점수
+  learning/        수행 점수, 연속 학습일, 진도·복습
+  judge/           채점 (실행 서비스 연결, 판정)
+  ai/              Gemini 호출, 프롬프트, 사용 한도
+  db/              DB 접근 (Supabase)
+content/        문제 원본 (problem.ts + 정답 코드)
+scripts/        문제 검증·생성·배포 스크립트
+supabase/       migration, seed, DB 테스트
+docs/           설계 결정(ADR), AI 개발 로그
+```
 
 ## 로컬 실행
 
@@ -42,6 +95,14 @@ npm run dev
 ```
 
 http://localhost:3000 에서 확인할 수 있습니다.
+
+```bash
+npm test           # 단위 테스트 (Vitest)
+npm run lint
+npm run build
+```
+
+> 배포 사이트는 Vercel·Supabase 클라우드에서 돌아가므로, 개발하지 않을 때는 로컬 서버와 Docker를 꺼도 됩니다.
 
 ## 환경변수
 
@@ -142,6 +203,7 @@ npm run content:approve -- <slug>                      # 승인: 정식 문제�
    | `GEMINI_API_KEY` | Google AI Studio API key | 서버 전용 |
    | `GEMINI_MODEL` | `gemini-3.5-flash-lite` (비우면 기본값) | 서버 전용 |
    | `GEMINI_FALLBACK_MODEL` | `gemini-3.1-flash-lite` (비우면 기본값) | 서버 전용 |
+   | `ONLINECOMPILER_API_KEY` | OnlineCompiler.io API key (비우면 자기 보고 채점) | 서버 전용 |
 
 4. Deploy 후 Supabase **URL Configuration**에 배포 주소를 추가합니다. (위 로그인 설정 3번)
 5. 확인
@@ -185,10 +247,15 @@ Preview도 같은 Supabase 프로젝트(운영 DB)를 사용합니다.
 
 ## AI-assisted development
 
-이 프로젝트는 AI 코딩 도구(Claude Code)를 활용해 개발하고 있습니다.
+이 프로젝트는 AI 코딩 도구(Claude Code)를 활용해 개발했습니다. 실제로 누가 무엇을 했는지 그대로 적습니다.
 
-- **직접 수행하는 일:** 요구사항 정의, 아키텍처와 기술적 의사결정, 코드 검토, 테스트, 디버깅
-- **AI를 활용하는 일:** 설계안과 대안 제시, 코드 초안 작성, 리뷰 보조
-- AI가 생성한 코드는 그대로 사용하지 않고 검토·실행·수정을 거쳐 반영합니다.
+- **직접 한 일**
+  - 서비스 기획과 요구사항 정의 (학습 철학: AI는 정답이 아닌 코치), 기능 우선순위와 진행 결정
+  - 외부 서비스 설정: Supabase·Google OAuth·Vercel·Gemini·OnlineCompiler.io 계정과 키 발급, 환경변수 설정
+  - 배포 사이트를 직접 사용하며 문제 발견 (예: 화면 100%에서 힌트 스크롤 문제, 못 푼 문제의 정답 확인 필요)
+  - AI가 만든 문제 초안 검토·승인 (예: 첫 문제의 난이도를 2 → 3으로 수정)
+- **AI가 한 일**
+  - 설계안·대안 제시, 코드 작성, 테스트 작성과 실행, 로컬·브라우저 검증, 문서 초안
 - 커밋마다 AI를 공동 저자로 표기하는 대신, 기능별로 무엇을 요청하고 AI가 무엇을 제안했으며 어떤 부분을 수정·거부했는지를 [AI 개발 로그](docs/ai-development-log.md)에 기록합니다.
 - 주요 설계 결정과 그 이유는 [ADR](docs/decisions.md)에 남깁니다.
+- 검증하지 못한 항목은 PR과 개발 로그에 "확인하지 못한 것"으로 따로 적습니다.
