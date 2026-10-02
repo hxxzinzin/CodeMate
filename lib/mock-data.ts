@@ -89,8 +89,6 @@ export const mockProblems: (ProblemSummary & { status: ProblemStatus })[] = [
   },
 ];
 
-export const mockTodayProblemId = "p3";
-
 export const mockStats: UserStats = {
   currentDifficulty: 3.2,
   streak: 12,
