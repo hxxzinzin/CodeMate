@@ -12,6 +12,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { ContentTestCase } from "../../content/types.ts";
+import { normalizeOutput as normalize } from "../../lib/judge/compare.ts";
 import { loadProblems, PROBLEMS_DIR, SOLUTION_FILES, validate, type LoadedProblem } from "./load.ts";
 
 const C_IMAGE = "codemate-c-runner";
@@ -20,11 +21,6 @@ const C_CONTAINER = `codemate-c-verify-${process.pid}`;
 // 정답 코드의 "속도"를 재는 것이 아니라 무한 루프만 걸러내는 안전장치다.
 // C는 docker exec 시작 시간까지 포함되어, 연속 실행 중 가끔 수 초 지연되는 경우가 있어 더 넉넉하게 둔다.
 const TIMEOUT_MS = { java: 5000, c: 10000 } as const;
-
-/** 줄 끝 공백과 마지막 빈 줄을 무시하고 비교한다. */
-function normalize(text: string): string {
-  return text.replace(/\r\n/g, "\n").split("\n").map((l) => l.trimEnd()).join("\n").replace(/\n+$/, "");
-}
 
 type RunResult = { ok: true } | { ok: false; reason: string };
 
