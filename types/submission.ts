@@ -39,6 +39,8 @@ export type SkillChange = {
 export type SubmitResponse = {
   /** 이번 제출로 갱신된 Skill. 갱신에 실패하면 빈 배열 */
   skillChanges: SkillChange[];
+  /** 추천 난이도 변화. 조정하지 않았거나(재시도·복습) 실패하면 null */
+  difficultyChange: { before: number; after: number } | null;
   submissionId: string;
   result: SubmissionResult;
   attemptCount: number;

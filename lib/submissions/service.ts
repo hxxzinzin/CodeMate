@@ -1,6 +1,13 @@
 import "server-only";
 import type { ApiErrorCode } from "@/lib/api/response";
-import { getProgress, getStreakAndTimezone, saveProgress, saveStreak } from "@/lib/db/learning";
+import {
+  getCurrentDifficulty,
+  getProgress,
+  getStreakAndTimezone,
+  saveCurrentDifficulty,
+  saveProgress,
+  saveStreak,
+} from "@/lib/db/learning";
 import { getHintEvents } from "@/lib/db/hints";
 import { getProblemBySlug } from "@/lib/db/problems";
 import { summarizeHintUsage } from "@/lib/hints/rules";
@@ -9,6 +16,7 @@ import { getJudge } from "@/lib/judge/provider";
 import { performanceScore, type PerformanceInput } from "@/lib/learning/performance";
 import { clampSolvingTime, isNewlySolved, nextProgress } from "@/lib/learning/progress";
 import { localDate, nextStreak } from "@/lib/learning/streak";
+import { nextDifficulty, shouldAdjustDifficulty } from "@/lib/recommendation/difficulty";
 import { applySubmissionToSkills } from "@/lib/skills/service";
 import type { SubmissionRequest } from "@/lib/submissions/schema";
 import type { SkillChange, SubmitResponse } from "@/types/submission";
@@ -130,5 +138,18 @@ export async function submitSolution(userId: string, req: SubmissionRequest, now
     console.error("[submissions] skill update failed", error);
   }
 
-  return { ok: true, submissionId: saved.id, result, attemptCount, newlySolved, streak, skillChanges };
+  // 추천 난이도: 그 문제의 첫 제출이거나 처음 해결했을 때만 조정한다. (재시도·복습으로 흔들리지 않게)
+  let difficultyChange: SubmitResponse["difficultyChange"] = null;
+  if (shouldAdjustDifficulty(attemptCount, newlySolved)) {
+    try {
+      const before = await getCurrentDifficulty(userId);
+      const after = nextDifficulty(before, problem.difficulty, performanceScore(performanceInput));
+      if (after !== before) await saveCurrentDifficulty(userId, after);
+      difficultyChange = { before, after };
+    } catch (error) {
+      console.error("[submissions] difficulty update failed", error);
+    }
+  }
+
+  return { ok: true, submissionId: saved.id, result, attemptCount, newlySolved, streak, skillChanges, difficultyChange };
 }
