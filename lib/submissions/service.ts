@@ -94,14 +94,6 @@ export async function submitSolution(userId: string, req: SubmissionRequest, now
     judgeDetail: detail ? { judge: judge.name, ...detail } : { judge: judge.name },
   });
 
-  await recordLearningEvent(userId, problem.id, "submission", {
-    submissionId: saved.id,
-    language: req.language,
-    result,
-    difficulty: problem.difficulty,
-    performance: performanceScore(performanceInput),
-  });
-
   // 진도·streak는 제출 기록이 저장된 뒤 갱신한다.
   // 여기서 실패해도 제출 자체는 이미 저장되었으므로 오류로 응답하지 않고 로그만 남긴다.
   let newlySolved = false;
@@ -150,6 +142,17 @@ export async function submitSolution(userId: string, req: SubmissionRequest, now
       console.error("[submissions] difficulty update failed", error);
     }
   }
+
+  // 학습 현황의 성장 그래프는 이 기록으로 그린다. (user_skills에는 현재 점수만 있으므로 변화량을 여기 남긴다)
+  await recordLearningEvent(userId, problem.id, "submission", {
+    submissionId: saved.id,
+    language: req.language,
+    result,
+    difficulty: problem.difficulty,
+    performance: performanceScore(performanceInput),
+    skillChanges,
+    difficultyChange,
+  });
 
   return { ok: true, submissionId: saved.id, result, attemptCount, newlySolved, streak, skillChanges, difficultyChange };
 }
