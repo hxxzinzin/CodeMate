@@ -26,6 +26,8 @@ type Props = {
   usageText: string | null;
   /** AI를 호출한 뒤 사용량을 다시 불러온다. */
   onAiUsed: () => void;
+  /** 힌트를 모두 본 뒤 정답 풀이로 이동 */
+  onRequestSolution: () => void;
 };
 
 type HintData = { level: HintLevel; content: string };
@@ -47,6 +49,7 @@ export function HintPanel({
   onToggle,
   usageText,
   onAiUsed,
+  onRequestSolution,
 }: Props) {
   const [hints, setHints] = useState<HintData[]>([]);
   const [aiHint, setAiHint] = useState<HintData | null>(null);
@@ -104,7 +107,7 @@ export function HintPanel({
   }
 
   return (
-    <div className="border-t">
+    <div className={cn("border-t", open && "flex min-h-0 flex-col lg:flex-1")}>
       <button
         type="button"
         aria-expanded={open}
@@ -120,7 +123,7 @@ export function HintPanel({
       </button>
 
       {open && (
-        <div id="hint-panel" className="flex max-h-[40vh] flex-col gap-3 overflow-y-auto px-3 pb-3">
+        <div id="hint-panel" className="flex max-h-[40vh] flex-col gap-3 overflow-y-auto px-3 pb-3 lg:max-h-none lg:min-h-0 lg:flex-1">
           {solvingMinutes < THINK_FIRST_MINUTES && hints.length === 0 && initialViewedLevel === 0 && (
             <p className="rounded-md bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
               먼저 {THINK_FIRST_MINUTES}분 정도 직접 고민해보세요. 스스로 떠올린 풀이가 가장 오래 기억에 남아요.
@@ -169,6 +172,17 @@ export function HintPanel({
             </Button>
             {usageText && <span className="self-center text-[11px] text-muted-foreground">{usageText}</span>}
           </div>
+          {highestOpened >= 4 && (
+            <div className="flex flex-col gap-2 rounded-md border border-dashed px-3 py-2 text-xs">
+              <p className="text-muted-foreground">
+                힌트를 모두 봤는데도 막혔다면 정답 풀이를 확인해도 괜찮아요. 풀이를 이해한 뒤, 3일 뒤에 스스로 다시 풀어볼
+                수 있게 오늘의 문제로 다시 추천해 드릴게요.
+              </p>
+              <Button size="sm" variant="outline" className="self-start" onClick={onRequestSolution}>
+                정답 풀이 보러 가기
+              </Button>
+            </div>
+          )}
           {!isLoggedIn && (
             <p className="text-[11px] text-muted-foreground">
               체험 중이에요.{" "}

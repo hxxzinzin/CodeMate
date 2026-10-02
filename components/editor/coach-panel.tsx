@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { BotIcon, ChevronDownIcon } from "lucide-react";
 import { Markdown } from "@/components/markdown";
@@ -21,6 +21,8 @@ type Props = {
   usageText: string | null;
   /** AI를 호출한 뒤 사용량을 다시 불러온다. */
   onAiUsed: () => void;
+  /** 힌트 패널에서 정답 풀이를 요청한 횟수. 바뀌면 정답 확인 단계를 열고 그 위치로 이동한다. */
+  solutionRequest: number;
 };
 
 type Pending = "review" | "explain" | "solution" | null;
@@ -32,7 +34,17 @@ const MAX_QUESTION = 300;
  * AI 코치: 코드 리뷰, 개념 질문, 정답 보기.
  * 정답은 AI가 아닌 검증된 정답 코드·해설을 보여주고, 보기 전에 한 번 더 확인한다.
  */
-export function CoachPanel({ slug, language, getCode, isLoggedIn, open, onToggle, usageText, onAiUsed }: Props) {
+export function CoachPanel({
+  slug,
+  language,
+  getCode,
+  isLoggedIn,
+  open,
+  onToggle,
+  usageText,
+  onAiUsed,
+  solutionRequest,
+}: Props) {
   const [pending, setPending] = useState<Pending>(null);
   const [error, setError] = useState<string | null>(null);
   const [review, setReview] = useState<string | null>(null);
@@ -40,6 +52,20 @@ export function CoachPanel({ slug, language, getCode, isLoggedIn, open, onToggle
   const [answer, setAnswer] = useState<string | null>(null);
   const [confirmingSolution, setConfirmingSolution] = useState(false);
   const [solution, setSolution] = useState<Solution | null>(null);
+  const solutionRef = useRef<HTMLElement>(null);
+
+  // 힌트 패널에서 "정답 풀이 보러 가기"를 누르면 확인 단계를 연다. (바로 공개하지는 않음)
+  // props가 바뀐 것에 맞춰 상태를 바꿀 때는 effect 대신 렌더 중에 조정한다. (React 권장 방식, 불필요한 재렌더 방지)
+  const [seenRequest, setSeenRequest] = useState(solutionRequest);
+  if (solutionRequest !== seenRequest) {
+    setSeenRequest(solutionRequest);
+    setConfirmingSolution(true);
+  }
+  // 화면 이동은 DOM 조작이라 effect에서 한다.
+  useEffect(() => {
+    if (solutionRequest === 0) return;
+    requestAnimationFrame(() => solutionRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+  }, [solutionRequest]);
 
   async function post<T>(url: string, body: unknown, kind: Exclude<Pending, null>): Promise<T | null> {
     setPending(kind);
@@ -88,7 +114,7 @@ export function CoachPanel({ slug, language, getCode, isLoggedIn, open, onToggle
   }
 
   return (
-    <div className="border-t">
+    <div className={cn("border-t", open && "flex min-h-0 flex-col lg:flex-1")}>
       <button
         type="button"
         aria-expanded={open}
@@ -104,7 +130,7 @@ export function CoachPanel({ slug, language, getCode, isLoggedIn, open, onToggle
       </button>
 
       {open && (
-        <div id="coach-panel" className="flex max-h-[40vh] flex-col gap-4 overflow-y-auto px-3 pb-3 text-sm">
+        <div id="coach-panel" className="flex max-h-[40vh] flex-col gap-4 overflow-y-auto px-3 pb-3 text-sm lg:max-h-none lg:min-h-0 lg:flex-1">
           {!isLoggedIn ? (
             <p className="text-xs text-muted-foreground">
               <Link
@@ -160,7 +186,7 @@ export function CoachPanel({ slug, language, getCode, isLoggedIn, open, onToggle
                 )}
               </section>
 
-              <section aria-labelledby="coach-solution" className="flex flex-col gap-2">
+              <section ref={solutionRef} aria-labelledby="coach-solution" className="flex flex-col gap-2">
                 <h3 id="coach-solution" className="text-xs font-medium text-muted-foreground">
                   정답 풀이
                 </h3>
@@ -176,7 +202,7 @@ export function CoachPanel({ slug, language, getCode, isLoggedIn, open, onToggle
                 ) : confirmingSolution ? (
                   <div role="group" aria-label="정답 보기 확인" className="flex flex-col gap-2 rounded-md bg-muted/60 px-3 py-2">
                     <p className="text-xs">
-                      정답을 보면 이번 풀이는 &lsquo;정답 확인 후 해결&rsquo;로 기록되고, 다음 문제 난이도에 반영돼요. 정말 볼까요?
+                      정답을 보면 이번 풀이는 &lsquo;정답 확인 후 해결&rsquo;로 기록되고, 다음 문제 난이도에 반영돼요. 아직 못 푼 문제라면 3일 뒤에 스스로 다시 풀어볼 수 있게 오늘의 문제로 다시 추천해 드릴게요. 정말 볼까요?
                     </p>
                     <div className="flex gap-2">
                       <Button size="sm" variant="destructive" disabled={pending !== null} onClick={showSolution}>

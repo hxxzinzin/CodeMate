@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { UserSkill } from "@/types/skill";
 import {
   type Candidate,
+  explainChoice,
   isEligible,
   pickDifficultyBand,
   pickLanguage,
@@ -124,6 +125,17 @@ describe("isEligible", () => {
     expect(isEligible(bfs, solved("2026-10-01T00:00:00Z"), opts)).toBe(true);
   });
 
+  it("정답을 보고 넘어간 문제는 다시 풀기 예정일이 지나면 최근에 냈더라도 다시 낸다", () => {
+    const retry = (nextReviewAt: string) =>
+      input({
+        recentDaily: new Map([["bfs", "2026-09-28"]]),
+        progress: new Map([["bfs", { status: "attempted" as const, nextReviewAt }]]),
+      });
+    expect(isEligible(bfs, retry("2026-10-01T00:00:00Z"), opts)).toBe(true);
+    // 예정일 전에는 기존 규칙(최근 14일 제외) 그대로
+    expect(isEligible(bfs, retry("2026-10-09T00:00:00Z"), opts)).toBe(false);
+  });
+
   it("시도만 하고 못 푼 문제는 다시 낼 수 있다", () => {
     expect(isEligible(bfs, input({ progress: new Map([["bfs", { status: "attempted" as const, nextReviewAt: null }]]) }), opts)).toBe(true);
   });
@@ -147,6 +159,17 @@ describe("scoreCandidate", () => {
     expect(scoreCandidate(bfs, "java", input({ recentFailTags: new Set(["bfs"]) })).total).toBeGreaterThan(base);
     const due = input({ progress: new Map([["bfs", { status: "solved" as const, nextReviewAt: "2026-10-01T00:00:00Z" }]]) });
     expect(scoreCandidate(bfs, "java", due).reviewDue).toBe(1);
+    const retryDue = input({ progress: new Map([["bfs", { status: "attempted" as const, nextReviewAt: "2026-10-01T00:00:00Z" }]]) });
+    expect(scoreCandidate(bfs, "java", retryDue).reviewDue).toBe(1);
+  });
+
+  it("추천 이유: 복습과 다시 풀기를 구분한다", () => {
+    const reason = (status: "solved" | "attempted") => {
+      const s = input({ progress: new Map([["bfs", { status, nextReviewAt: "2026-10-01T00:00:00Z" }]]) });
+      return explainChoice(bfs, "java", scoreCandidate(bfs, "java", s), s);
+    };
+    expect(reason("solved")).toContain("예전에 푼 문제");
+    expect(reason("attempted")).toContain("정답을 확인하고 넘어갔던 문제");
   });
 
   it("최근에 너무 쉽게 푼 분야는 점수가 내려간다", () => {
@@ -159,6 +182,37 @@ describe("scoreCandidate", () => {
   it("새 개념은 현재 수준 이하 문제에서만 가산한다", () => {
     expect(scoreCandidate(dp, "java", input({ currentDifficulty: 3 })).novelty).toBe(1);
     expect(scoreCandidate(hard, "java", input({ currentDifficulty: 3 })).novelty).toBe(0);
+  });
+});
+
+describe("recommendProblem — 다시 풀기", () => {
+  const attempted = (nextReviewAt: string) => ({ status: "attempted" as const, nextReviewAt });
+
+  it("예정일이 지난 다시 풀기 문제는 난이도 구간과 상관없이 매번 먼저 낸다 (로컬 확인에서 구간이 달라 빠졌던 사례)", () => {
+    // easy(Lv2)는 현재 수준(3)과 다른 구간이지만, 어떤 시드에서도 먼저 나와야 한다.
+    for (let s = 0; s < 50; s++) {
+      const r = recommendProblem(input({ random: seededRandom(`retry:${s}`), progress: new Map([["easy", attempted("2026-10-01T00:00:00Z")]]) }));
+      expect(r?.problem.id).toBe("easy");
+      expect(r?.reason).toContain("정답을 확인하고 넘어갔던 문제");
+    }
+  });
+
+  it("여러 개면 가장 오래 기다린 것부터, 새로 뽑기로 제외한 문제는 건너뛴다", () => {
+    const progress = new Map([
+      ["bfs", attempted("2026-09-30T00:00:00Z")],
+      ["dp", attempted("2026-09-25T00:00:00Z")],
+    ]);
+    expect(recommendProblem(input({ progress }))?.problem.id).toBe("dp");
+    expect(recommendProblem(input({ progress, excludeIds: new Set(["dp"]) }))?.problem.id).toBe("bfs");
+  });
+
+  it("예정일 전이거나, 푼 문제의 복습이면 먼저 내지 않는다 (기존 점수 방식)", () => {
+    const notYet = new Map([["easy", attempted("2026-10-09T00:00:00Z")]]);
+    const solvedReview = new Map([["easy", { status: "solved" as const, nextReviewAt: "2026-10-01T00:00:00Z" }]]);
+    const picks = (progress: Map<string, ReturnType<typeof attempted> | { status: "solved"; nextReviewAt: string }>) =>
+      Array.from({ length: 50 }, (_, s) => recommendProblem(input({ random: seededRandom(`x:${s}`), progress }))?.problem.id);
+    expect(picks(notYet).every((id) => id === "easy")).toBe(false);
+    expect(picks(solvedReview).every((id) => id === "easy")).toBe(false);
   });
 });
 

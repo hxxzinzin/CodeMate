@@ -138,8 +138,13 @@ function daysBetween(fromDate: string, toDate: string): number {
   return (new Date(`${toDate}T00:00:00Z`).getTime() - new Date(`${fromDate}T00:00:00Z`).getTime()) / 86_400_000;
 }
 
+/**
+ * 다시 풀 때가 된 문제.
+ * - solved: 푼 문제의 복습 예정일이 지남
+ * - attempted: 못 푼 채 정답을 본 문제의 "다시 풀기" 예정일이 지남 (lib/learning/progress.ts progressAfterReveal)
+ */
 function isReviewDue(progress: ProgressInfo | undefined, now: Date): boolean {
-  return progress?.status === "solved" && progress.nextReviewAt !== null && new Date(progress.nextReviewAt) <= now;
+  return progress !== undefined && progress.nextReviewAt !== null && new Date(progress.nextReviewAt) <= now;
 }
 
 export function isEligible(
@@ -150,10 +155,13 @@ export function isEligible(
   if (input.excludeIds.has(c.id)) return false;
   if (opts.language && !c.languages.includes(opts.language)) return false;
   if (opts.difficulty !== null && c.difficulty !== opts.difficulty) return false;
-  const lastDaily = input.recentDaily.get(c.id);
-  if (lastDaily && daysBetween(lastDaily, input.today) < opts.recentDays) return false;
   const progress = input.progress.get(c.id);
-  if (progress?.status === "solved" && !isReviewDue(progress, input.now)) return false;
+  const reviewDue = isReviewDue(progress, input.now);
+  // 다시 풀 때가 된 문제는 "최근에 낸 문제 제외"보다 우선한다. (오늘의 문제로 나왔다가 정답을 본 문제도 3일 뒤 다시 나오게)
+  // 매일 반복되지 않는 것은 예정일을 뒤로 미루는 쪽(nextProgress)이 보장한다.
+  const lastDaily = input.recentDaily.get(c.id);
+  if (!reviewDue && lastDaily && daysBetween(lastDaily, input.today) < opts.recentDays) return false;
+  if (progress?.status === "solved" && !reviewDue) return false;
   return true;
 }
 
@@ -219,7 +227,11 @@ export function explainChoice(c: Candidate, language: Language, breakdown: Score
     return t ? tagLabel(t.key) : null;
   };
 
-  if (breakdown.reviewDue) return "예전에 푼 문제를 다시 풀어볼 때가 됐어요. 오래 기억하려면 복습이 중요해요.";
+  if (breakdown.reviewDue) {
+    return input.progress.get(c.id)?.status === "solved"
+      ? "예전에 푼 문제를 다시 풀어볼 때가 됐어요. 오래 기억하려면 복습이 중요해요."
+      : "정답을 확인하고 넘어갔던 문제예요. 이제 스스로 다시 풀어볼 차례예요.";
+  }
   if (breakdown.recentFail) {
     const tag = name((t) => input.recentFailTags.has(t.key));
     if (tag) return `최근에 어려워했던 ${tag}을(를) 다시 연습해봐요.`;
@@ -251,6 +263,20 @@ export function recommendProblem(input: RecommendationInput): Recommendation | n
   const preferred = pickLanguage(input.javaRatio, input.recentLanguageCounts, input.random);
   const band = pickDifficultyBand(input.currentDifficulty, input.random);
   const other: Language = preferred === "java" ? "c" : "java";
+
+  // 못 푼 채 정답을 본 문제의 "다시 풀기"는 난이도 구간·점수와 상관없이 먼저 낸다. (가장 오래 기다린 것부터)
+  // 난이도 구간 안에서만 경쟁하면 그 구간이 뽑히는 날에만 나와서, 사실상 다시 안 나올 수 있다.
+  // 푼 문제의 복습은 새 학습을 밀어내지 않도록 기존처럼 점수로만 우대한다.
+  const retry = input.candidates
+    .filter((c) => !input.excludeIds.has(c.id))
+    .map((c) => ({ c, progress: input.progress.get(c.id) }))
+    .filter(({ progress }) => progress?.status === "attempted" && isReviewDue(progress, input.now))
+    .sort((a, b) => a.progress!.nextReviewAt!.localeCompare(b.progress!.nextReviewAt!))[0];
+  if (retry) {
+    const language = retry.c.languages.includes(preferred) ? preferred : retry.c.languages[0];
+    const breakdown = scoreCandidate(retry.c, language, input);
+    return { problem: retry.c, language, reason: explainChoice(retry.c, language, breakdown, input) };
+  }
 
   const attempts: { language: Language | null; difficulty: number | null; recentDays: number }[] = [
     { language: preferred, difficulty: band, recentDays: cfg.recentDays },

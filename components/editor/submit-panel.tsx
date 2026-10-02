@@ -183,7 +183,7 @@ export function SubmitPanel({ slug, language, getCode, getSolvingSeconds, onSubm
   }
 
   return (
-    <div className="flex flex-col gap-2 border-t px-3 py-2 text-sm">
+    <div className="flex shrink-0 flex-col gap-2 border-t px-3 py-2 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div aria-live="polite" className="min-w-0 flex-1 text-xs">
           {submitting && <p className="text-muted-foreground">채점 중이에요… 테스트를 하나씩 실행하고 있어요. (몇 초~수십 초)</p>}
@@ -230,7 +230,7 @@ export function SubmitPanel({ slug, language, getCode, getSolvingSeconds, onSubm
       )}
 
       {state.step === "done" && (
-        <div className="text-xs">
+        <div className="max-h-[30vh] overflow-y-auto text-xs">
           {state.data.judge && <JudgeDetail result={state.data.result} judge={state.data.judge} language={language} />}
           {state.data.difficultyChange && (
             <p className="mt-1 text-muted-foreground">
