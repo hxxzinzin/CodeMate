@@ -4,8 +4,27 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import type { ApiResult } from "@/lib/api/response";
+import { tagLabel } from "@/lib/labels";
 import type { Language } from "@/types/problem";
-import type { SubmitResponse as SubmitData } from "@/types/submission";
+import type { SkillChange, SubmitResponse as SubmitData } from "@/types/submission";
+
+/** "Stack 첫 측정 52" / "Queue 40 → 45 ▲5" */
+function SkillChangeText({ change }: { change: SkillChange }) {
+  const name = tagLabel(change.skill);
+  const after = Math.round(change.after);
+  if (change.before === null) return <>{name} 첫 측정 {after}</>;
+  const before = Math.round(change.before);
+  const diff = after - before;
+  const sign = diff > 0 ? `▲${diff}` : diff < 0 ? `▼${-diff}` : "유지";
+  return (
+    <>
+      {name} {before} → {after}{" "}
+      <span className={diff > 0 ? "text-emerald-600 dark:text-emerald-400" : diff < 0 ? "text-destructive" : undefined}>
+        {sign}
+      </span>
+    </>
+  );
+}
 
 type Props = {
   slug: string;
@@ -93,6 +112,15 @@ export function SubmitPanel({ slug, language, getCode, getSolvingSeconds, onSubm
                 {state.data.result === "self_correct" ? "맞았어요(직접 확인)" : "틀렸어요(직접 확인)"}
                 {state.data.streak !== null && ` · ${state.data.streak}일 연속 학습 중`}
               </p>
+            )}
+            {state.step === "done" && state.data.skillChanges.length > 0 && (
+              <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-muted-foreground" aria-label="실력 점수 변화">
+                {state.data.skillChanges.map((c) => (
+                  <li key={`${c.category}:${c.skill}`}>
+                    <SkillChangeText change={c} />
+                  </li>
+                ))}
+              </ul>
             )}
             {state.step === "error" && (
               <p role="alert" className="text-destructive">
