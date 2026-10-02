@@ -12,6 +12,7 @@ import { getHintEvents } from "@/lib/db/hints";
 import { getProblemBySlug } from "@/lib/db/problems";
 import { summarizeHintUsage } from "@/lib/hints/rules";
 import { getCoachUsageSince, getSubmissionStats, insertSubmission, recordLearningEvent } from "@/lib/db/submissions";
+import { skillSkipReason } from "@/lib/judge/measurable";
 import { getJudge, selfReportJudge } from "@/lib/judge/provider";
 import { JudgeUnavailableError } from "@/lib/judge/run-cases";
 import type { JudgeResult } from "@/lib/judge/types";
@@ -74,8 +75,8 @@ export async function submitSolution(userId: string, req: SubmissionRequest, now
     throw error;
   }
   const { result, summary } = judged;
-  // 컴파일 에러는 문법 실수라 알고리즘 실력의 근거가 아니다. Skill·난이도에는 반영하지 않는다.
-  const measurable = result !== "ce";
+  // 컴파일 에러(또는 그럴 가능성이 큰 실패)는 알고리즘 실력의 근거가 아니다. Skill·난이도에는 반영하지 않는다.
+  const measurable = skillSkipReason(result, req.language, summary) === null;
 
   const attemptCount = stats.count + 1;
   // 직전 제출 이후 본 힌트만 이번 시도에 포함한다. (난이도 조정에 사용)

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import type { ApiResult } from "@/lib/api/response";
+import { skillSkipReason } from "@/lib/judge/measurable";
 import { tagLabel } from "@/lib/labels";
 import type { Language } from "@/types/problem";
 import type { JudgeSummary, SkillChange, SubmissionResult, SubmitResponse as SubmitData } from "@/types/submission";
@@ -78,7 +79,12 @@ function JudgeDetail({ result, judge, language }: { result: SubmissionResult; ju
       {result === "tle" && <p>더 빠른 방법(시간 복잡도)이 필요하거나, 끝나지 않는 반복이 있을 수 있어요.</p>}
       {result === "re" && !judge.message && <p>{RUN_ERROR_HINT[language]}</p>}
       {judge.message && <Pre label={result === "ce" ? "컴파일러 메시지" : "에러 메시지"} text={judge.message} />}
-      {result === "ce" && <p>컴파일 에러는 실력 점수와 추천 난이도에 반영하지 않아요.</p>}
+      {skillSkipReason(result, language, judge) === "compile_error" && (
+        <p>컴파일 에러는 실력 점수와 추천 난이도에 반영하지 않아요.</p>
+      )}
+      {skillSkipReason(result, language, judge) === "possible_compile_error" && (
+        <p>첫 번째 테스트부터 실행되지 않아 컴파일 에러일 수 있어서, 실력 점수와 추천 난이도에는 반영하지 않았어요.</p>
+      )}
       {judge.skipped !== undefined && judge.skipped > 0 && (
         <p>
           큰 입력으로 속도를 확인하는 테스트 {judge.skipped}개는 채점 서비스의 입력 크기 한도(100KB) 때문에 실행하지 못했어요.
