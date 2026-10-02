@@ -2,92 +2,8 @@
  * 임시 데이터 — Supabase 연동(Phase 2~3) 전까지 화면 구조를 확인하기 위한 값.
  * 실제 데이터로 교체하면 이 파일을 삭제한다.
  */
-import type { ProblemStatus, ProblemSummary } from "@/types/problem";
 import type { UserSkill } from "@/types/skill";
-import type { Submission } from "@/types/submission";
 import type { UserPreferences, UserStats } from "@/types/user";
-
-export const mockProblems: (ProblemSummary & { status: ProblemStatus })[] = [
-  {
-    id: "p1",
-    slug: "word-frequency",
-    title: "단어 빈도 세기",
-    difficulty: 2,
-    estimatedMinutes: 20,
-    languages: ["java"],
-    tags: [
-      { type: "algorithm", key: "frequency-count" },
-      { type: "data_structure", key: "hashmap" },
-      { type: "java", key: "collection" },
-    ],
-    status: "solved",
-  },
-  {
-    id: "p2",
-    slug: "pair-sum",
-    title: "합이 K인 두 수",
-    difficulty: 3,
-    estimatedMinutes: 30,
-    languages: ["java", "c"],
-    tags: [
-      { type: "algorithm", key: "two-pointer" },
-      { type: "algorithm", key: "sorting" },
-      { type: "data_structure", key: "array" },
-      { type: "c", key: "pointer" },
-    ],
-    status: "attempted",
-  },
-  {
-    id: "p3",
-    slug: "maze-shortest-path",
-    title: "미로 최단 거리",
-    difficulty: 3,
-    estimatedMinutes: 40,
-    languages: ["java"],
-    tags: [
-      { type: "algorithm", key: "bfs" },
-      { type: "data_structure", key: "queue" },
-      { type: "data_structure", key: "graph" },
-    ],
-    status: "unsolved",
-  },
-  {
-    id: "p4",
-    slug: "valid-brackets",
-    title: "올바른 괄호",
-    difficulty: 1,
-    estimatedMinutes: 15,
-    languages: ["java", "c"],
-    tags: [
-      { type: "data_structure", key: "stack" },
-      { type: "data_structure", key: "string" },
-    ],
-    status: "solved",
-  },
-  {
-    id: "p5",
-    slug: "student-records",
-    title: "학생 성적 정렬",
-    difficulty: 2,
-    estimatedMinutes: 25,
-    languages: ["c"],
-    tags: [
-      { type: "algorithm", key: "sorting" },
-      { type: "c", key: "struct" },
-    ],
-    status: "unsolved",
-  },
-  {
-    id: "p6",
-    slug: "stair-climbing",
-    title: "계단 오르기",
-    difficulty: 4,
-    estimatedMinutes: 45,
-    languages: ["java", "c"],
-    tags: [{ type: "algorithm", key: "dp" }],
-    status: "unsolved",
-  },
-];
 
 export const mockStats: UserStats = {
   currentDifficulty: 3.2,
@@ -118,15 +34,8 @@ export const mockSkills: UserSkill[] = [
   { category: "c", skill: "struct", score: 42, attempts: 3, correct: 1, lastPracticedAt: "2026-09-19" },
 ];
 
-/** 강점·취약점은 Phase 7에서 Skill 점수로 계산한다. */
-export const mockStrengths = ["array", "sorting", "hashmap"];
+/** 학습 현황 화면(#25)에서 실제 데이터로 바꾸면 이 파일을 삭제한다. */
 export const mockWeaknesses = ["dfs", "bfs", "dp"];
-
-export const mockRecentSubmissions: Submission[] = [
-  { id: "s1", problemId: "p1", language: "java", result: "self_correct", solvingTimeSec: 1080, hintCount: 0, attemptCount: 1, solutionRevealed: false, createdAt: "2026-09-30T13:20:00Z" },
-  { id: "s2", problemId: "p2", language: "c", result: "self_wrong", solvingTimeSec: 2400, hintCount: 3, attemptCount: 2, solutionRevealed: false, createdAt: "2026-09-29T12:05:00Z" },
-  { id: "s3", problemId: "p4", language: "java", result: "self_correct", solvingTimeSec: 600, hintCount: 1, attemptCount: 1, solutionRevealed: false, createdAt: "2026-09-28T11:40:00Z" },
-];
 
 export const mockPreferences: UserPreferences = {
   javaRatio: 70,
