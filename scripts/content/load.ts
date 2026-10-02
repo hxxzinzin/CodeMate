@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -5,6 +6,18 @@ import { TAGS, type TagType } from "../../content/tags.ts";
 import type { ContentLanguage, ProblemContent } from "../../content/types.ts";
 
 export const PROBLEMS_DIR = path.resolve(import.meta.dirname, "../../content/problems");
+
+/**
+ * slug → UUID (SHA-1 기반, RFC 4122 v5 형식).
+ * 같은 slug는 항상 같은 id라서 seed와 클라우드 동기화(sync)를 여러 번 해도 행이 늘지 않는다.
+ */
+export function problemId(slug: string): string {
+  const h = createHash("sha1").update(`codemate:problem:${slug}`).digest();
+  h[6] = (h[6] & 0x0f) | 0x50;
+  h[8] = (h[8] & 0x3f) | 0x80;
+  const hex = h.subarray(0, 16).toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+}
 
 export const SOLUTION_FILES: Record<ContentLanguage, string> = {
   java: "Main.java",

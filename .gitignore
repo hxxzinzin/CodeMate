@@ -44,3 +44,6 @@ next-env.d.ts
 # IDE
 .idea/
 .vscode/
+
+# AI 문제 초안 (검토 전, 승인하면 content/problems로 이동)
+content/drafts/
