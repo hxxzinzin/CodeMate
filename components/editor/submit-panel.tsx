@@ -113,6 +113,11 @@ export function SubmitPanel({ slug, language, getCode, getSolvingSeconds, onSubm
                 {state.data.streak !== null && ` · ${state.data.streak}일 연속 학습 중`}
               </p>
             )}
+            {state.step === "done" && state.data.difficultyChange && (
+              <p className="mt-1 text-muted-foreground">
+                추천 난이도 {state.data.difficultyChange.before.toFixed(2)} → {state.data.difficultyChange.after.toFixed(2)}
+              </p>
+            )}
             {state.step === "done" && state.data.skillChanges.length > 0 && (
               <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-muted-foreground" aria-label="실력 점수 변화">
                 {state.data.skillChanges.map((c) => (

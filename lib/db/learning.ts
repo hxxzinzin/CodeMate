@@ -32,6 +32,20 @@ export async function saveStreak(userId: string, s: StreakState): Promise<void> 
   if (error) throw error;
 }
 
+/** 추천 난이도 D. numeric 컬럼이라 문자열로 올 수 있어 숫자로 바꾼다. */
+export async function getCurrentDifficulty(userId: string): Promise<number> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("profiles").select("current_difficulty").eq("id", userId).single();
+  if (error) throw error;
+  return Number(data.current_difficulty);
+}
+
+export async function saveCurrentDifficulty(userId: string, difficulty: number): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("profiles").update({ current_difficulty: difficulty }).eq("id", userId);
+  if (error) throw error;
+}
+
 export async function getProgress(userId: string, problemId: string): Promise<ProgressState | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
