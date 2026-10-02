@@ -5,6 +5,8 @@ import { COACH_SYSTEM_PROMPT } from "@/lib/ai/prompts";
 import { callAi } from "@/lib/ai/usage";
 import type { ExplainRequest, ReviewRequest, SolutionRequest } from "@/lib/coach/schema";
 import { getSolution } from "@/lib/db/hints";
+import { getProgress, saveProgress } from "@/lib/db/learning";
+import { progressAfterReveal } from "@/lib/learning/progress";
 import { getProblemBySlug } from "@/lib/db/problems";
 import { recordLearningEvent } from "@/lib/db/submissions";
 import { stripLongCodeBlocks } from "@/lib/hints/rules";
@@ -92,5 +94,14 @@ export async function revealSolution(userId: string, req: SolutionRequest): Prom
   if (!solution) return { ok: false, code: "NOT_FOUND", message: "이 문제의 해설이 아직 없어요." };
 
   await recordLearningEvent(userId, problem.id, "solution_reveal", { language: req.language });
+
+  // 못 푼 문제의 정답을 봤으면 며칠 뒤 "다시 풀기"로 추천되게 예약한다. 실패해도 정답은 보여준다.
+  try {
+    const next = progressAfterReveal(await getProgress(userId, problem.id), new Date());
+    if (next) await saveProgress(userId, problem.id, next);
+  } catch (error) {
+    console.error("[coach] retry schedule failed", error);
+  }
+
   return { ok: true, explanation: solution.explanation, code: solution.referenceCode[req.language] ?? null };
 }

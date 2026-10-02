@@ -26,14 +26,47 @@ export function nextProgress(prev: ProgressState | null, result: SubmissionResul
   const nowIso = now.toISOString();
   const newlySolved = correct && !prev?.firstSolvedAt;
 
+  const solved = correct || prev?.status === "solved";
+  // 정답을 보고 넘어간 문제(다시 풀기 예정)를 또 틀리면, 매일 다시 나오지 않도록 다시 RETRY_AFTER_DAYS 뒤로 미룬다.
+  const retryAgain = !solved && prev?.nextReviewAt != null;
+  // 이미 푼 문제를 복습 예정일 이후에 다시 풀었으면(복습 완료) 다음 복습을 더 멀리 잡는다.
+  const reviewed = prev?.status === "solved" && prev.nextReviewAt != null && new Date(prev.nextReviewAt) <= now;
+
   return {
-    status: correct || prev?.status === "solved" ? "solved" : "attempted",
+    status: solved ? "solved" : "attempted",
     attempts: (prev?.attempts ?? 0) + 1,
     firstSolvedAt: newlySolved ? nowIso : (prev?.firstSolvedAt ?? null),
     lastAttemptAt: nowIso,
     nextReviewAt: newlySolved
-      ? new Date(now.getTime() + FIRST_REVIEW_AFTER_DAYS * 24 * 60 * 60 * 1000).toISOString()
-      : (prev?.nextReviewAt ?? null),
+      ? daysLater(now, FIRST_REVIEW_AFTER_DAYS)
+      : retryAgain
+        ? daysLater(now, RETRY_AFTER_REVEAL_DAYS)
+        : reviewed
+          ? daysLater(now, NEXT_REVIEW_AFTER_DAYS)
+          : (prev?.nextReviewAt ?? null),
+  };
+}
+
+/** 못 푼 문제의 정답을 본 뒤 스스로 다시 풀어보게 할 시점 */
+export const RETRY_AFTER_REVEAL_DAYS = 3;
+/** 복습을 마친 뒤 다음 복습까지 (간격을 늘려 가는 간격 반복) */
+export const NEXT_REVIEW_AFTER_DAYS = 14;
+
+const daysLater = (now: Date, days: number) => new Date(now.getTime() + days * 24 * 60 * 60 * 1000).toISOString();
+
+/**
+ * 정답 풀이를 본 뒤의 진도. 아직 못 푼 문제는 RETRY_AFTER_REVEAL_DAYS 뒤에 "다시 풀기"로 추천되게 한다.
+ * (정답만 보고 끝나면 영원히 못 푼 문제로 남기 때문)
+ * 이미 푼 문제면 바꾸지 않는다(null). 제출하지 않은 문제여도 진도 행을 만든다(attempts 0).
+ */
+export function progressAfterReveal(prev: ProgressState | null, now: Date): ProgressState | null {
+  if (prev?.status === "solved") return null;
+  return {
+    status: "attempted",
+    attempts: prev?.attempts ?? 0,
+    firstSolvedAt: null,
+    lastAttemptAt: prev?.lastAttemptAt ?? now.toISOString(),
+    nextReviewAt: daysLater(now, RETRY_AFTER_REVEAL_DAYS),
   };
 }
 

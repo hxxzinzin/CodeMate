@@ -64,6 +64,8 @@ export default function EditorWorkspace({ slug, languages, isLoggedIn, autoJudge
   const solvingTimer = useSolvingTimer(store, slug);
   // 힌트·AI 코치 패널은 하나만 열어 에디터 공간을 지킨다.
   const [openPanel, setOpenPanel] = useState<"hint" | "coach" | null>(null);
+  // 힌트 패널의 "정답 풀이 보러 가기" → AI 코치 패널의 정답 확인으로 이동 (값이 바뀔 때마다 한 번)
+  const [solutionRequest, setSolutionRequest] = useState(0);
   const aiUsage = useAiUsage();
   const togglePanel = (panel: "hint" | "coach") => {
     const next = openPanel === panel ? null : panel;
@@ -131,9 +133,9 @@ export default function EditorWorkspace({ slug, languages, isLoggedIn, autoJudge
 
   return (
     // 데스크톱에서는 오른쪽 영역 전체가 화면 높이 안에 들어오게 한다. (sticky 영역이 화면보다 길면 아래쪽을 볼 수 없음)
-    // 힌트를 펼치면 에디터가 그만큼 줄어든다.
+    // 패널을 펼치면 에디터와 패널이 남은 높이를 나눠 쓴다. (패널 내용은 자체 스크롤, 아래가 잘리지 않음)
     <div className="flex flex-col overflow-hidden rounded-lg border lg:h-[calc(100vh-6.5rem)]">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
         <div role="radiogroup" aria-label="언어 선택" className="flex gap-1">
           {languages.map((lang) => (
             <button
@@ -173,7 +175,7 @@ export default function EditorWorkspace({ slug, languages, isLoggedIn, autoJudge
       {/* 모바일은 고정 높이, 데스크톱은 남는 높이를 모두 쓴다.
           flex로 늘어난 영역은 높이가 "확정"되지 않아 Monaco의 height: 100%가 0이 되므로,
           absolute inset-0 층을 두어 실제 크기를 채운다. */}
-      <div className="relative h-[360px] lg:h-auto lg:min-h-[220px] lg:flex-1">
+      <div className="relative h-[360px] lg:h-auto lg:min-h-[160px] lg:flex-1">
         <div className="absolute inset-0">
           <CodeEditor language={language} value={codeByLanguage[language]} onChange={handleChange} />
         </div>
@@ -203,6 +205,10 @@ export default function EditorWorkspace({ slug, languages, isLoggedIn, autoJudge
         onToggle={() => togglePanel("hint")}
         usageText={usageLabel(aiUsage.usage)}
         onAiUsed={aiUsage.refresh}
+        onRequestSolution={() => {
+          setOpenPanel("coach");
+          setSolutionRequest((n) => n + 1);
+        }}
       />
 
       <CoachPanel
@@ -212,11 +218,12 @@ export default function EditorWorkspace({ slug, languages, isLoggedIn, autoJudge
         isLoggedIn={isLoggedIn}
         open={openPanel === "coach"}
         onToggle={() => togglePanel("coach")}
+        solutionRequest={solutionRequest}
         usageText={usageLabel(aiUsage.usage)}
         onAiUsed={aiUsage.refresh}
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t px-3 py-1.5 text-xs text-muted-foreground">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t px-3 py-1.5 text-xs text-muted-foreground">
         <SaveStatusText status={status} />
         <p title="이 화면을 보고 있던 시간만 셉니다">풀이 시간 {solvingTimer.minutes}분</p>
         <p className="hidden sm:block">
